@@ -1,0 +1,64 @@
+\documentclass[a4paper, titlepage,11pt]{article}
+\usepackage{fontspec}
+\usepackage{polyglossia}
+\setdefaultlanguage{english}
+\usepackage{indentfirst}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{microtype}
+\usepackage[sorting=none,backend=biber]{biblatex}
+\usepackage[inline]{enumitem}
+\usepackage{booktabs}
+\usepackage[font=small,justification=centering]{caption}
+\usepackage{subcaption}
+\usepackage{csquotes}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{mathrsfs}
+% \usepackage{changes}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\usepackage[ampersand]{easylist}
+\usepackage{placeins}
+
+\brokenpenalty=1000
+\clubpenalty=1000
+\widowpenalty=1000
+% \definechangesauthor[name={AP}, color=blue]{ap}
+
+% \DeclareMathOperator{\sigm}{sigm}
+% \DeclareMathOperator{\patches}{patches}
+% \DeclareMathOperator{\CrsEnt}{\mathcal{L}_{CE}}
+% \DeclareMathOperator{\Sep}{\mathcal{L}_{Sep}}
+% \DeclareMathOperator{\Clst}{\mathcal{L}_{Clst}}
+% \DeclareMathOperator{\sigmaop}{\sigma}
+
+\newcommand{\change}[1]{#1}
+
+
+\title{Fractal Wavelet Image Compression}
+\author{}
+\date{\today}
+
+\addbibresource{main.bib}
+\makeatletter
+
+\begin{document}
+    \include{titlepage}
+    \empty
+    \include{abstract}
+    
+    \microtypesetup{protrusion=false}
+    \tableofcontents
+    \microtypesetup{protrusion=true}
+    %\listoffigures
+    \clearpage
+    
+    \input{chapters/10_introduction}
+    \input{chapters/20_complex_based_fractals.tex}
+    \input{chapters/30_compression_overview.tex}
+    \input{chapters/40_experiments.tex}
+    \input{chapters/50_conclusions.tex}
+   
+    \printbibliography[heading=bibintoc]
+\end{document}

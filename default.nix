@@ -6,6 +6,7 @@ mkShell {
          inherit(texlive)
          scheme-small
 
+         rsfs
          appendix
          siunitx
          polski
@@ -19,7 +20,11 @@ mkShell {
          acronym
          lipsum
          bigfoot
+         biblatex
          xstring
+         csquotes
+         easylist
+         placeins
 
 # Add other LaTeX libraries (packages) here as needed, e.g:
 # stmaryrd amsmath pgf

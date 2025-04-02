@@ -17,7 +17,6 @@ factor=1100]{microtype}
 \SetTracking{encoding={*}, shape=sc}{40}
 \newsavebox{\myhbar}
 \savebox{\myhbar}{$\hbar$}
-\renewcommand*{\hbar}{\mathalpha{\usebox{\myhbar}}}
 \usepackage[utf8]{inputenc}
 \usepackage{siunitx} % Provides the \SI{}{} and \si{} command for typesetting SI units
 \usepackage{graphicx} % Required for the inclusion of images
@@ -43,6 +42,10 @@ factor=1100]{microtype}
    \usepackage[unicode=true]{hyperref}
 \renewcommand\refname{Bibliografia}
 \newcommand{\horrule}[1]{\rule{\linewidth}{#1}} 
+\newcommand\doubleRule{\toprule\toprule}
+\newcommand\doublerule{\toprule\specialrule{\heavyrulewidth}{\doublerulesep}{0.4em}}
+\newcommand{\ra}[1]{\renewcommand{\arraystretch}{#1}}
+\renewcommand*{\hbar}{\mathalpha{\usebox{\myhbar}}}
 
 % In the SI package you can declare your own units which comes in handy
 \DeclareSIUnit{\ions}{ions} 
