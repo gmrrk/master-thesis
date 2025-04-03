@@ -1,47 +1,73 @@
-\pagenumbering{arabic}
 \section{Introduction}
 
-\subsection{Thesis structure}
+When we started storing images digitally we noticed that they take way too much space given how 
+little information they contain. In natural non-random images there is a tendency of similarity between
+surrounding pixels, if we take one pixel from the area that represents the sky we have great chance
+to see very similiar colour in the neighbourhood. Image compression algorithms strives from those redundancies
+by transforming input image into an intermediate representation, that has better statistical parameters for
+entropy encoding. Historically most popular such transformations were DCT (Discrete Cosine Transform) and DWT
+(Discrete Wavelet Transform), both of which transform the input space by dividing it into a grid of blocks and then
+performing futher operations within each one. Such transformed image still contains a lot of information that is missed
+by human vision. High frequency elements are less seen by visual cortex and to futher compress an image 
+the transformed representation is quantizied in lossy codecs by eliminating those unseen values. 
+This approach proved to achieve best results in modern codecs, but with harsher
+quantization in lossy compression block boundaries are much more visible, damaging the quality. 
+Lossless codecs often used block lattices for context modelling and better prediction of residuals. Each block is directly adjacent 
+to 4 different blocks and can infer its values from those neighbours. In JPEG-LS [citation] authors proposed a predictor
+LOCO-I that assigns each element to one of 365 contexts based on the already decoded neighbouring values adjusting 
+the distributions of encoded elements. Such grouping enables codec to use different instances of entropy coder for 
+different propability distributions observed within each context.
 
-
-
-\begin{itemize}
-	\item Chapter 1 – \textbf{Introduction}
-	
-	This chapter contains a the introduction. 
-	
-	\item Chapter 2 – \textbf{Some nice chapter}
-	
-	The chapter outlines some great results.
-	
-	\item Chapter 3 – \textbf{Experimental}
-	
-	This part of the dissertation describes experimental details.
-
-	\item Chapter 4 - \textbf{Conclusions}
-	
-	This chapter contains the conclusions.
-
-	\item Appendix - \textbf{Academic achievements}
-	
-	The publications and conferences at which  the results were presented are listed here. 
-\end{itemize}
-
-
-
-\subsection{A subsection}
-
-
-\subsection{Some section with a figure} \label{section-with-figure}
-
-\begin{figure} [!h]
-	\centering
-	%\captionsetup{justification=centering}
-	\includegraphics[width=14cm,height=8cm,keepaspectratio]{figures/introduction/annealing-intro}
-	\setlength\belowcaptionskip{3pt}
-	\caption{Some figure with with part a) and b).}
-	\label{some-figure}
+\begin{figure}[ht]
+    \centering
+    {
+    \setlength{\fboxsep}{0pt}
+    \setlength{\fboxrule}{1pt}
+    \fbox{\includegraphics[scale=1.5]{figures/introduction/rect_grid.jpg}}
+    }
+    \caption{Plane decomposition into rectangular grid}
+    
 \end{figure}
+
+A different approach can be seen in JPEGXL: they use the DCT over blocks of variadic size. Larger monotonic
+regions can be covered by a larger blocks, aggregating similar propability distributions together.
+
+Building ahead of this ideas and problems I will present a novel image compression codec \textbf{FRIF} (\textbf{FR}actal \textbf{I}mage \textbf{F}ormat)
+which presents a new idea of lattice decomposition of an image with discrete wavelet transform applied with each fractal. Such grid
+has a certain amount of interesting properties that could be leveraged in mentioned image compression methods:
+\begin{itemize}
+    \item Complex numeral systems fractals have a highly irregular boundary
+    \item Since each fractal has 6 immiediate neighbours, we get an hexagonal grid which allow to infer contexts and 
+        predictions from larger set
+    \item Self-similarity relation of each fractal can benefit from wavelet transform decomposition
+\end{itemize}
+\begin{figure}[ht]
+    \centering
+    {
+        \setlength{\fboxsep}{0pt}
+        \setlength{\fboxrule}{1pt}
+        \fbox{\includegraphics[scale=1.5]{figures/introduction/fractal_grid.png}}
+    }
+    \caption{Plane decomposition into tame-twindragon fractals}
+
+\end{figure}
+Along with whitepaper I will present an implementation of the codec with comparisons to the existing lossless and lossy
+popular approaches.
+I will conduct experiments over 2 datasets: JSI31[citation] and JPEG dataset[citation] and collect
+PSNR and SSIM2 metrics that corresponents to image quality after compression.
+
+Aim of this thesis is not to beat current sophisticated compression models with FRIF, but 
+to measure performance of a quite different approach. My work will be divided into 4 sections:
+\begin{enumerate}
+    \item Preliminaries - I will describe required concepts taken from image processing field to properly state the method
+    \item Compression method - Presentation of compression model with all necessary transforms and context modelling
+    \item Experiments - Summary of experiments done on presented model
+    \item Conclusions  
+\end{enumerate}
+
+
+
+
 
 
 
