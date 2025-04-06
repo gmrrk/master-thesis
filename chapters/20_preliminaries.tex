@@ -2,8 +2,97 @@
 \section{Preliminaries}
 
 \subsection{Complex based numeral systems}
+Complex plane decomposition shown in Figure 1. is constructed from complex base numeral system fractals.
+This subsection will cover theory about how they are generated.
 
+\subsubsection{Positional numeral systems}
+In each numeral system we represent a number $x$ by a sequence of digits.
+\begin{equation}
+    x = \sum_i a_iz^i 
+\end{equation}
+where $a_i$ are digits and $z$ is a radix of chosen numeral system. With $a_i={0,1}\,\,z=2$ we obtain
+binary numeral system. I will denote a number $x$ of base $z$ as $x_z$. As an example we can take $11_{10}$
+\[
+    1\cdot10^1 + 3\cdot10^0= 13_{10} = 1101_2 = 1\cdot2^3 + 1\cdot2^2 + 0\cdot2^1 + 1\cdot2^0
+\]
+
+Such numeral systems are widely used in computer science as binary and hexagonal systems.
+However in twentienth century D. Knuth[citation] proposed a positional numeral system with imaginary radix. The choice of 
+$z$ in (1) does not imply any restrictions of the domain, so all interesting properties of positional numeral systems are held when $z\in\mathbb{C}$.
+\begin{align*}
+    &n \geq 2\,\,\,\, z \in \mathbb{C}\\
+    &\text{digits: } n^* = \{0..n-1\}\,\,\\
+    &\text{Integer part: } I_z = \left\{ \sum_{i\geq0}a_iz^i\,: a_i\in n^*,\, \exists_N\forall_{i>N}\, a_i = 0 \right\}\\
+    &\text{Fractional part: } F_z = \left\{ \sum_{i<0}a_iz^i\,: a_i\in n^*\right\} 
+\end{align*}
+With self-similarity relations:
+\[
+    z\cdot F_z = \bigcup_{i=0,\dots,n-1}(F_z + i) \ \ \ \ I_z = \bigcup_{i=0,\cdots,n-1}(z\cdot I_z + i)
+\]
+
+In [citation] author define proper base as a surjective and pseudoinjective,
+so for each $x\in \mathbb{C}$ there is a combination as a sequence (1) that represents that number
+and for all but zero Hausdorf measure $x$ there is only one sequence representation.
+Radix that I will extensively use in the compression scheme is given as
+\[
+    n^* = \{0,\,1\}\ \ \
+    z = -\frac{1}{2} + \frac{\sqrt{3}}{2}i
+\]
+Proof for it being proper can be found in [citation]. Choice of this base from other proper radices
+will be covered in Section 3.
+
+
+\subsubsection{Fractal construction}
+Complex numeral system fractal of base $z$ and size $i$ can be put as a set
+\begin{equation}
+    A_i = \{ x_z |\, x_z < z^i\}
+\end{equation}
+So for given depth $i$ $A$ contains a plane in $\mathbb{C}$ that represents all possible numbers of radix $z$ lesser than
+$z^i$. As an example with $i = 3$:
+\[
+    A_3 = \{x_z | x_z < 1000_z\} = \{0_z,\,1_z,\,10_z,\,11_z,\,100_z,\,101_z,\,110_z,\,111_z\}
+\]
+This construction is also periodic, which means that with correct translations such fractals cover the whole $\mathbb{C}$ plane.
+We can derive size of $A_i$ from the fact that $A_{i+1}$ set will contain twice as much elements as $A_i$ and $A_0 = \{0\}$
+\begin{equation}
+   |A_i| = 2^i 
+\end{equation}
+
+
+\begin{figure}
+    \centering
+    
+    \subfloat[$A_3$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+        \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
+        \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
+        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
+        \filldraw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle;
+\end{tikzpicture}}
+\hfill
+\subfloat[$A_4$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+        \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
+        \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
+        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
+        \filldraw (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- cycle;
+\end{tikzpicture}}
+
+\subfloat[$A_5$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+        \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
+        \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
+        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
+        \filldraw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (3.5,0.5) -- (3.5,1.5) -- (4.5,1.5) -- (4.5,0.5) -- (5.5,0.5) -- (5.5,1.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle ;
+\end{tikzpicture}}
+\hfill
+\subfloat[$A_6$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+        \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
+        \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
+        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
+        \filldraw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+\end{tikzpicture}}
+\caption{Representation of $A$ sets from $i = 3$ to $i = 6$. Each set is created by a sum of the previous set with translation represented by a leading digit}
+\end{figure}
 \subsection{Discrete Haar wavelet transform}
+Another neccesary component to kkkkkkkkkkkkkkkkkkkk
 
 \subsection{ANS entropy coding}
 
