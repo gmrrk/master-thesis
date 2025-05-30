@@ -1,8 +1,74 @@
 \newpage
 \section{Experiments}
+In order to assess the efficacy of the codec, a series of benchmarks will be presented, 
+with a view to drawing comparisons with a number of popular image compression schemes. 
+It is acknowledged that FRIF is capable of operating in both lossless and lossy modes and 
+experiments are conducted separately for each mode. Performance was measured across
+kodak [citation] and CID22 [citation] datasets, which are designed to contain a variety 
+of different image types.
 
-\subsection{SSIM2 metric}
+\begin{figure}[ht]
+    \begin{center}
+        \includegraphics[width=0.80\textwidth]{figures/experimental/kodak_dataset.png}
+    \end{center}
+    \caption{Kodak dataset}\label{fig:kodak_dataset}
+\end{figure}
 
-\subsection{J31 dataset}
+\begin{figure}[ht]
+    \begin{center}
+        \includegraphics[width=0.80\textwidth]{figures/experimental/cid22_dataset.png}
+    \end{center}
+    \caption{First 24 images of CID22 dataset}\label{fig:cid22_dataset}
+\end{figure}
 
-\subsection{kodak dataset}
+
+ 
+\subsection{Lossless compression}
+
+Lossless compression mode performance is measured solely with average amount bits required to decode one pixel
+of 24 bit depth for RGB8 pictures. Measurement of FRIF was done along PNG, JPEG2000 and QOI codecs to draw the comparisons.
+\begin{figure}[ht]
+    \begin{center}
+        \includegraphics[width=\textwidth]{figures/experimental/bench_lossless_kodak.png}
+    \end{center}
+    \caption{Bits per pixel benchmark across PNG, JPEG2000 and proposed FRIF on kodak dataset. Noticably on
+    almost all samples FRIF achieves lower bpp values than PNG. On all samples JPEG2000 achieves best 
+    compression ratios}\label{fig:results_kodak}
+\end{figure}
+
+As shown on Figure~\ref{fig:results_kodak} with its current form and implementation lossless FRIF exceedes PNG in compression
+rates on highly detailed images available in kodak dataset. However this advantage diminishes
+on images with higher amounts of smooth areas like in CID22 or J31 dataset as shown in Table~\ref{tab:results_lossless}. 
+\begin{table}[ht]
+    \begin{center}
+        \begin{tabular}[c]{|l||l|l|l|}
+            \hline
+            \textbf{codec} & \textbf{kodak} & \textbf{CID22} & \textbf{J31}\\
+            \hline
+            png & $13.049914$ & $10.99834$ & $12.812785$\\
+            frif & $11.59786$ & $11.559122$ & $13.246048$\\
+            jpeg2000 & $9.57616$ & $8.873637$ & $11.15974$\\            
+            qoi & $13.988512$ & $13.283921$ & $16.568345$\\
+            \hline
+        \end{tabular}
+    \end{center}
+    \caption{Average bits per pixel across all images in datasets}\label{tab:results_lossless}
+\end{table}
+
+\newpage
+\subsection{Lossy compression}
+
+Lossy compression mode of FRIF waw measured by calculating bit per pixel vs image distortion curve. For image quality metric SSIM2 was used and the benchmark
+was done on the same datasets as lossless compression benchmark in previous section.
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=0.95\textwidth]{figures/}
+    \end{center}
+    \caption{}\label{fig:}
+\end{figure}
+
+The results show a room for improvement for FRIF, current quantization is too harsh for the quality.
+
+
+

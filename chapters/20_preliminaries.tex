@@ -6,12 +6,12 @@ Complex plane decomposition shown in Figure 1. is constructed from complex base 
 This subsection will cover theory about how they are generated.
 
 \subsubsection{Positional numeral systems}
-In each numeral system we represent a number $x$ by a sequence of digits.
+In each numeral system we represent a number $x$ by a sequence of digits:
 \begin{equation}
     x = \sum_i a_iz^i 
 \end{equation}
 where $a_i$ are digits and $z$ is a radix of chosen numeral system. With $a_i={0,1}\,\,z=2$ we obtain
-binary numeral system. I will denote a number $x$ of base $z$ as $x_z$. As an example we can take $11_{10}$
+binary numeral system. I will denote a number $x$ of base $z$ as $x_z$. As an example we can take $13_{10}$
 \[
     1\cdot10^1 + 3\cdot10^0= 13_{10} = 1101_2 = 1\cdot2^3 + 1\cdot2^2 + 0\cdot2^1 + 1\cdot2^0
 \]
@@ -33,67 +33,386 @@ With self-similarity relations:
 In [citation] author define proper base as a surjective and pseudoinjective,
 so for each $x\in \mathbb{C}$ there is a combination as a sequence (1) that represents that number
 and for all but zero Hausdorf measure $x$ there is only one sequence representation.
-Radix that I will extensively use in the compression scheme is given as
-\[
+Radix that will be extensively used in the FRIF compression scheme is given as
+\begin{equation}
     n^* = \{0,\,1\}\ \ \
-    z = -\frac{1}{2} + \frac{\sqrt{3}}{2}i
-\]
-Proof for it being proper can be found in [citation]. Choice of this base from other proper radices
-will be covered in Section 3.
-
-
-\subsubsection{Fractal construction}
-Complex numeral system fractal of base $z$ and size $i$ can be put as a set
-\begin{equation}
-    A_i = \{ x_z |\, x_z < z^i\}
+    z = -\frac{1}{2} + \frac{\sqrt{3}}{2}i 
 \end{equation}
-So for given depth $i$ $A$ contains a plane in $\mathbb{C}$ that represents all possible numbers of radix $z$ lesser than
-$z^i$. As an example with $i = 3$:
-\[
-    A_3 = \{x_z | x_z < 1000_z\} = \{0_z,\,1_z,\,10_z,\,11_z,\,100_z,\,101_z,\,110_z,\,111_z\}
-\]
-This construction is also periodic, which means that with correct translations such fractals cover the whole $\mathbb{C}$ plane.
-We can derive size of $A_i$ from the fact that $A_{i+1}$ set will contain twice as much elements as $A_i$ and $A_0 = \{0\}$
-\begin{equation}
-   |A_i| = 2^i 
-\end{equation}
+Proof for properness can be found in [citation].
 
-
-\begin{figure}
-    \centering
-    
-    \subfloat[$A_3$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+\begin{figure}[ht]
+    \centering    
+    \subfloat[$A^3_0$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
         \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
         \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
         \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
         \filldraw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle;
 \end{tikzpicture}}
 \hfill
-\subfloat[$A_4$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+\subfloat[$A^4_0$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
         \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
         \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
         \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
         \filldraw (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- cycle;
 \end{tikzpicture}}
 
-\subfloat[$A_5$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+\subfloat[$A^5_0$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
         \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
         \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
-        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
+        \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};20
         \filldraw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (3.5,0.5) -- (3.5,1.5) -- (4.5,1.5) -- (4.5,0.5) -- (5.5,0.5) -- (5.5,1.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle ;
 \end{tikzpicture}}
 \hfill
-\subfloat[$A_6$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
+\subfloat[$A^6_0$]{\begin{tikzpicture}[baseline=(current bounding box.center), scale=0.3]
         \draw[step=1cm, gray, very thin] (-5,-5) grid(10,10);
         \draw[thick,->] (-5,0) -- (10,0) node[anchor=north west]{x\cdot a};
         \draw[thick,->] (0,-5) -- (0,10) node[anchor=south east]{y\cdot b};
         \filldraw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
 \end{tikzpicture}}
-\caption{Representation of $A$ sets from $i = 3$ to $i = 6$. Each set is created by a sum of the previous set with translation represented by a leading digit}
+\caption{Representation of $A^i_0$ sets from $i = 3$ to $i = 6$. Each set is created by a sum of the previous set with translation represented by a leading digit}
 \end{figure}
+\subsubsection{Fractal construction}
+Complex numeral system fractal of base $z \in \mathbb{C}$, size $i\in\mathbb{N}$ and translation $c\in\mathbb{C}$ can be put as a set
+\begin{equation}
+    A^i_c = \{ x_z + c\, |\, x_z < z^i\}
+\end{equation}
+So for given depth $i$ $A$ contains a plane in $\mathbb{C}$ that represents all possible numbers of radix $z$ lesser than
+$z^i$ translated by $c$. As an example with $i = 3$ and $c = 0$ :
+\[
+    A^3_0 = \{x_z | x_z < 1000_z\} = \{0_z,\,1_z,\,10_z,\,11_z,\,100_z,\,101_z,\,110_z,\,111_z\}
+\]
+Moreover size of $A^i_c$ can be derived from the fact that each $A^i_c$ set contains all combinations of digits 
+up to $z^i$ and $n^* = \{0,1\}$  
+\begin{equation}
+   |A^i_c| = 2^i 
+\end{equation}
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[baseline=(current bounding box.center), scale = 0.3]
+        \draw[step=1cm, gray, very thin] (-16,-10) grid(20,15);
+        \draw[thick,->] (-16,0) -- (20,0) node[anchor=north west]{x\cdot a};
+        \draw[thick,->] (0,-10) -- (0,15) node[anchor=south east]{y\cdot b};
+        \draw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+        \draw (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,2.5) -- (-2.5,2.5) -- (-2.5,1.5) -- (-2.5,0.5) -- (-3.5,0.5) -- (-3.5,1.5) -- (-4.5,1.5) -- (-4.5,0.5) -- (-4.5,-0.5) -- (-3.5,-0.5) -- (-3.5,-1.5) -- (-3.5,-2.5) -- (-4.5,-2.5) -- (-4.5,-1.5) -- (-5.5,-1.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- cycle;
+        \draw (-7.5,2.5) -- (-7.5,3.5) -- (-8.5,3.5) -- (-8.5,4.5) -- (-9.5,4.5) -- (-9.5,3.5) -- (-10.5,3.5) -- (-10.5,4.5) -- (-11.5,4.5) -- (-11.5,3.5) -- (-12.5,3.5) -- (-12.5,4.5) -- (-13.5,4.5) -- (-13.5,5.5) -- (-13.5,6.5) -- (-12.5,6.5) -- (-12.5,5.5) -- (-11.5,5.5) -- (-11.5,6.5) -- (-11.5,7.5) -- (-12.5,7.5) -- (-12.5,8.5) -- (-12.5,9.5) -- (-11.5,9.5) -- (-11.5,8.5) -- (-10.5,8.5) -- (-10.5,9.5) -- (-9.5,9.5) -- (-9.5,10.5) -- (-8.5,10.5) -- (-8.5,9.5) -- (-7.5,9.5) -- (-7.5,10.5) -- (-6.5,10.5) -- (-6.5,9.5) -- (-5.5,9.5) -- (-5.5,8.5) -- (-4.5,8.5) -- (-4.5,9.5) -- (-3.5,9.5) -- (-3.5,8.5) -- (-2.5,8.5) -- (-2.5,9.5) -- (-1.5,9.5) -- (-1.5,8.5) -- (-0.5,8.5) -- (-0.5,7.5) -- (-0.5,6.5) -- (-1.5,6.5) -- (-1.5,7.5) -- (-2.5,7.5) -- (-2.5,6.5) -- (-2.5,5.5) -- (-1.5,5.5) -- (-1.5,4.5) -- (-1.5,3.5) -- (-2.5,3.5) -- (-2.5,4.5) -- (-3.5,4.5) -- (-3.5,3.5) -- (-4.5,3.5) -- (-4.5,2.5) -- (-5.5,2.5) -- (-5.5,3.5) -- (-6.5,3.5) -- (-6.5,2.5) -- (-7.5,2.5) -- (-7.5,3.5) -- cycle ;
+        \draw (3.5,3.5) -- (3.5,4.5) -- (2.5,4.5) -- (2.5,5.5) -- (1.5,5.5) -- (1.5,4.5) -- (0.5,4.5) -- (0.5,5.5) -- (-0.5,5.5) -- (-0.5,4.5) -- (-1.5,4.5) -- (-1.5,5.5) -- (-2.5,5.5) -- (-2.5,6.5) -- (-2.5,7.5) -- (-1.5,7.5) -- (-1.5,6.5) -- (-0.5,6.5) -- (-0.5,7.5) -- (-0.5,8.5) -- (-1.5,8.5) -- (-1.5,9.5) -- (-1.5,10.5) -- (-0.5,10.5) -- (-0.5,9.5) -- (0.5,9.5) -- (0.5,10.5) -- (1.5,10.5) -- (1.5,11.5) -- (2.5,11.5) -- (2.5,10.5) -- (3.5,10.5) -- (3.5,11.5) -- (4.5,11.5) -- (4.5,10.5) -- (5.5,10.5) -- (5.5,9.5) -- (6.5,9.5) -- (6.5,10.5) -- (7.5,10.5) -- (7.5,9.5) -- (8.5,9.5) -- (8.5,10.5) -- (9.5,10.5) -- (9.5,9.5) -- (10.5,9.5) -- (10.5,8.5) -- (10.5,7.5) -- (9.5,7.5) -- (9.5,8.5) -- (8.5,8.5) -- (8.5,7.5) -- (8.5,6.5) -- (9.5,6.5) -- (9.5,5.5) -- (9.5,4.5) -- (8.5,4.5) -- (8.5,5.5) -- (7.5,5.5) -- (7.5,4.5) -- (6.5,4.5) -- (6.5,3.5) -- (5.5,3.5) -- (5.5,4.5) -- (4.5,4.5) -- (4.5,3.5) -- (3.5,3.5) -- (3.5,4.5) -- cycle ;
+        \draw (12.5,-1.5) -- (12.5,-0.5) -- (11.5,-0.5) -- (11.5,0.5) -- (10.5,0.5) -- (10.5,-0.5) -- (9.5,-0.5) -- (9.5,0.5) -- (8.5,0.5) -- (8.5,-0.5) -- (7.5,-0.5) -- (7.5,0.5) -- (6.5,0.5) -- (6.5,1.5) -- (6.5,2.5) -- (7.5,2.5) -- (7.5,1.5) -- (8.5,1.5) -- (8.5,2.5) -- (8.5,3.5) -- (7.5,3.5) -- (7.5,4.5) -- (7.5,5.5) -- (8.5,5.5) -- (8.5,4.5) -- (9.5,4.5) -- (9.5,5.5) -- (10.5,5.5) -- (10.5,6.5) -- (11.5,6.5) -- (11.5,5.5) -- (12.5,5.5) -- (12.5,6.5) -- (13.5,6.5) -- (13.5,5.5) -- (14.5,5.5) -- (14.5,4.5) -- (15.5,4.5) -- (15.5,5.5) -- (16.5,5.5) -- (16.5,4.5) -- (17.5,4.5) -- (17.5,5.5) -- (18.5,5.5) -- (18.5,4.5) -- (19.5,4.5) -- (19.5,3.5) -- (19.5,2.5) -- (18.5,2.5) -- (18.5,3.5) -- (17.5,3.5) -- (17.5,2.5) -- (17.5,1.5) -- (18.5,1.5) -- (18.5,0.5) -- (18.5,-0.5) -- (17.5,-0.5) -- (17.5,0.5) -- (16.5,0.5) -- (16.5,-0.5) -- (15.5,-0.5) -- (15.5,-1.5) -- (14.5,-1.5) -- (14.5,-0.5) -- (13.5,-0.5) -- (13.5,-1.5) -- (12.5,-1.5) -- (12.5,-0.5) -- cycle ;
+        \draw (10.5,-7.5) -- (10.5,-6.5) -- (9.5,-6.5) -- (9.5,-5.5) -- (8.5,-5.5) -- (8.5,-6.5) -- (7.5,-6.5) -- (7.5,-5.5) -- (6.5,-5.5) -- (6.5,-6.5) -- (5.5,-6.5) -- (5.5,-5.5) -- (4.5,-5.5) -- (4.5,-4.5) -- (4.5,-3.5) -- (5.5,-3.5) -- (5.5,-4.5) -- (6.5,-4.5) -- (6.5,-3.5) -- (6.5,-2.5) -- (5.5,-2.5) -- (5.5,-1.5) -- (5.5,-0.5) -- (6.5,-0.5) -- (6.5,-1.5) -- (7.5,-1.5) -- (7.5,-0.5) -- (8.5,-0.5) -- (8.5,0.5) -- (9.5,0.5) -- (9.5,-0.5) -- (10.5,-0.5) -- (10.5,0.5) -- (11.5,0.5) -- (11.5,-0.5) -- (12.5,-0.5) -- (12.5,-1.5) -- (13.5,-1.5) -- (13.5,-0.5) -- (14.5,-0.5) -- (14.5,-1.5) -- (15.5,-1.5) -- (15.5,-0.5) -- (16.5,-0.5) -- (16.5,-1.5) -- (17.5,-1.5) -- (17.5,-2.5) -- (17.5,-3.5) -- (16.5,-3.5) -- (16.5,-2.5) -- (15.5,-2.5) -- (15.5,-3.5) -- (15.5,-4.5) -- (16.5,-4.5) -- (16.5,-5.5) -- (16.5,-6.5) -- (15.5,-6.5) -- (15.5,-5.5) -- (14.5,-5.5) -- (14.5,-6.5) -- (13.5,-6.5) -- (13.5,-7.5) -- (12.5,-7.5) -- (12.5,-6.5) -- (11.5,-6.5) -- (11.5,-7.5) -- (10.5,-7.5) -- (10.5,-6.5) -- cycle ;
+        \draw (-0.5,-8.5) -- (-0.5,-7.5) -- (-1.5,-7.5) -- (-1.5,-6.5) -- (-2.5,-6.5) -- (-2.5,-7.5) -- (-3.5,-7.5) -- (-3.5,-6.5) -- (-4.5,-6.5) -- (-4.5,-7.5) -- (-5.5,-7.5) -- (-5.5,-6.5) -- (-6.5,-6.5) -- (-6.5,-5.5) -- (-6.5,-4.5) -- (-5.5,-4.5) -- (-5.5,-5.5) -- (-4.5,-5.5) -- (-4.5,-4.5) -- (-4.5,-3.5) -- (-5.5,-3.5) -- (-5.5,-2.5) -- (-5.5,-1.5) -- (-4.5,-1.5) -- (-4.5,-2.5) -- (-3.5,-2.5) -- (-3.5,-1.5) -- (-2.5,-1.5) -- (-2.5,-0.5) -- (-1.5,-0.5) -- (-1.5,-1.5) -- (-0.5,-1.5) -- (-0.5,-0.5) -- (0.5,-0.5) -- (0.5,-1.5) -- (1.5,-1.5) -- (1.5,-2.5) -- (2.5,-2.5) -- (2.5,-1.5) -- (3.5,-1.5) -- (3.5,-2.5) -- (4.5,-2.5) -- (4.5,-1.5) -- (5.5,-1.5) -- (5.5,-2.5) -- (6.5,-2.5) -- (6.5,-3.5) -- (6.5,-4.5) -- (5.5,-4.5) -- (5.5,-3.5) -- (4.5,-3.5) -- (4.5,-4.5) -- (4.5,-5.5) -- (5.5,-5.5) -- (5.5,-6.5) -- (5.5,-7.5) -- (4.5,-7.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-7.5) -- (2.5,-7.5) -- (2.5,-8.5) -- (1.5,-8.5) -- (1.5,-7.5) -- (0.5,-7.5) -- (0.5,-8.5) -- (-0.5,-8.5) -- (-0.5,-7.5) -- cycle ;
+        \draw (-11,-1) node[anchor = west]{$z_i$};
+        \draw (-9,5) node[anchor=south west]{$-z_{i+1}$};
+        \draw (2,6) node[anchor=south west]{$-z_{i+1} + z_i$};
+        \draw (11,1) node[anchor=south west]{$-z_i$};
+        \draw (9,-5) node[anchor=south west]{$z_{i+1}$};
+        \draw (-2,-6) node[anchor=south west]{$z_{i+1} - z_i$}; 
+    \end{tikzpicture}
+    \caption{Neighbourhood of fractal with point of origin at $(0,0)$}
+
+\end{figure}
+
+This construction is also periodic, which means that with correct translations such fractals cover the whole $\mathbb{C}$ plane.
+Each neighbour center of origin can be retrieved form neighbour set $\mathcal{N}_i$
+\begin{equation*}
+    \mathcal{N}_{i} = \{ z_i, -z_{i+1},z_i-z_{i+1}, -z_i, z_{i+1}, z_{i+1} - z_i \} 
+\end{equation*}
+For all proper bases these translations also give all neighbours location, however for the rest of this thesis we will use 
+(2) as base of fractals used for the codec. Fractals generated by such radix are in fact named in some of publications as tame-twindragon fractals.
+Another proper base is $z = i - 1$ which produces a twindragon fractal, that could also be used in proposed compression scheme. In
+the remainder of this thesis $\mathcal{N}^i_c$ will be the notation for neighbour set of fractal translated by vector $c$.
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=0.3]
+        \filldraw (3.5,-6.5) -- (3.5,-5.5) -- (2.5,-5.5) -- (2.5,-4.5) -- (1.5,-4.5) -- (0.5,-4.5) -- (0.5,-5.5) -- (1.5,-5.5) -- (1.5,-6.5) -- (0.5,-6.5) -- (-0.5,-6.5) -- (-0.5,-5.5) -- (-1.5,-5.5) -- (-1.5,-4.5) -- (-0.5,-4.5) -- (-0.5,-3.5) -- (-1.5,-3.5) -- (-1.5,-2.5) -- (-0.5,-2.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-3.5,-0.5) -- (-3.5,-1.5) -- (-2.5,-1.5) -- (-2.5,-2.5) -- (-3.5,-2.5) -- (-4.5,-2.5) -- (-4.5,-1.5) -- (-5.5,-1.5) -- (-5.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-5.5,0.5) -- (-5.5,1.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (1.5,1.5) -- (1.5,2.5) -- (0.5,2.5) -- (0.5,3.5) -- (1.5,3.5) -- (2.5,3.5) -- (2.5,2.5) -- (3.5,2.5) -- (3.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (3.5,0.5) -- (3.5,-0.5) -- (2.5,-0.5) -- (2.5,-1.5) -- (3.5,-1.5) -- (3.5,-2.5) -- (4.5,-2.5) -- (5.5,-2.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-0.5) -- (5.5,-0.5) -- (6.5,-0.5) -- (6.5,-1.5) -- (7.5,-1.5) -- (7.5,-2.5) -- (6.5,-2.5) -- (6.5,-3.5) -- (7.5,-3.5) -- (7.5,-4.5) -- (6.5,-4.5) -- (5.5,-4.5) -- (4.5,-4.5) -- (4.5,-5.5) -- (5.5,-5.5) -- (5.5,-6.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-5.5) -- cycle;
+    \end{tikzpicture}
+    \caption{Twindragon fractal $A^6_0$ generated by base $z=i-1$} 
+\end{figure}
+\newpage
 \subsection{Discrete Haar wavelet transform}
-Another neccesary component to kkkkkkkkkkkkkkkkkkkk
+As mentioned in Section 1 image compression codecs can transform an image
+into intermediate representation in frequency domain. Most popular
+choices are DCT and DWT. The latter decomposes image into high-pass and low-pass coefficients
+based on chosen discretely sampled wavelet. The key advantage over Fourier Transform is that wavelets capture
+both frequency and location in time. In DWT there is a degree of freedom in choice of basis wavelet functions that combined represent the signal.
 
-\subsection{ANS entropy coding}
+The DWT of an image is obtained by serially applying low-pass $g$ and a high-pass filter $h$
+to signal $x$, halving sample amount with each step.
+\begin{align*}
+    &y_{low}[n] = \sum_k x[k]g[2n - k] \\
+    &y_{high}[n] = \sum_k x[k]h[2n - k] 
+\end{align*}
+With subsampling operator $\downarrow$ defined as:
+\[
+    (y\downarrow k)[n] = y[kn]
+\]
+we can represent the single step of wavelet transform as following diagram:
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=0.7, node distance = 15mm,
+        sample/.style = {
+            rectangle, minimum size = 6mm,
+            very thick, draw=black!50,
+        },
+        value/.style = {
+            rectangle, minimum size = 6mm, rounded corners=3mm,
+            very thick, draw=black!50,
+        },
+        ]
+        \node (val) {$x[n]$};
+        \node (highpass)[sample, right=of val] {$g[n]$};
+        \node (lowpass)[sample, below=of highpass] {$h[n]$};
+        \node (downsample1)[value, right=of lowpass] {$\downarrow 2$};
+        \node (downsample2)[value, right=of highpass] {$\downarrow 2$};
 
+        \node (approx)[right=of downsample1] {Approximation coefficients};
+        \node (detail)[right=of downsample2] {Detail coefficients};
+
+        \path (val) edge[thick, ->] (highpass)
+            (highpass) edge[thick, ->] (downsample2)
+            (downsample2) edge[thick, ->] (detail);
+        \path (lowpass) edge[thick, ->] (downsample1)
+            (downsample1) edge[thick, ->] (approx);
+
+        \draw[thick, ->] 
+            ($ (val.east) + (10mm,0) $)
+            -- ++(0,-3.14)
+            -> (lowpass.west);
+    \end{tikzpicture}
+    
+\end{figure}
+
+This transform is fully reversible, we can combine detail coefficients with approximation and get the input signal.
+
+In image compression this process can be applied repeatedly and halving the low frequency image dimensions.
+Practically with DWT application to image processing a single channel is a 2 dimensional
+signal, which means that DWT must be applied across both dimensions.
+
+First DWT method was invented by Alfréd Haar in [citation] and was based on Haar wavelets, with 
+\begin{align}
+    g(x_k) &= g(x_{2k}) - g(x_{2k+1})\\
+    h(x_k) &= \frac{1}{2} (h(x_{2k}) + h(x_{2k+1}))
+\end{align}
+Applied vertically and horizontally to an image, this wavelet extracts horizontal and vertical details
+with high-pass filter and a approximated image with halved dimension with low-pass filter.
+
+However, for digital image processing this wavelet has an unfortunate property: resulting coefficients
+are floating point numbers. This, apart from rounding errors, makes coefficients unavailable for entropy encoder to 
+quantizate into fixed size alphabet. To address those issues there are fixed-width integer Haar wavelets
+designed for compression cases proposed in [citation]. 
+\begin{align}
+    g(x_k) &= g(x_{2k}) - g(x_{2k+1})\\
+    h(x_k) &= h(x_{2k+1}) + \left \lfloor g(x_k)/2\right \rfloor 
+\end{align}
+
+Presented enhanced DWT uses already obtained difference while calculating the sum,
+so for row-column approach in image processing it needs to be applied in the 
+correct order to obtain valid results. Our proposed solution applies one dimensional DWT, so 
+it was not a concern while designing the codec. Authors in [citation] proposed several
+wavelets that in their experiments performed better in terms of entropy than (7). Empirically
+we measured entropy of different wavelets used and (7) gave the best results.
+
+
+\begin{figure}[ht]
+    \centering 
+    \begin{tikzpicture}
+        \graph[binary tree layout] {
+            h{$[1]$} -> g{$[1]$} ->
+            { g{$[2]$} -> {g{$[4]$} -> {g{$[8]$}, g{$[9]$}}, g{$[5]$} -> {g{$[10]$},g{$[11]$}}}
+            , g{$[3]$} -> {g{$[6]$} -> {g{$[12]$},g{$[13]$}}, g{$[7]$} -> {g{$[14]$},g{$[15]$}}}}
+        }; 
+    \end{tikzpicture}
+    \caption{Haar tree of depth 4 used to transform signal $x$ with 32 elements}
+\end{figure}
+In this thesis we will use a term \textbf{Haar Tree}, which resembles the whole context needed to perform
+an inverse Haar wavelet transform. For one dimensional cases Haar tree is a $k$ depth binary tree with residuals
+for each layer with an extra sum above the final residual. Each level can be seen as a separate discrete Haar wavelet transform step.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[scale=0.4]{figures/preliminaries/wavelet_showcase.png} 
+    \caption{Example single pass of 2D Haar wavelet transform on a image.
+        On the top left pane there is an approximation of the original image with horizontal details on 
+    the right pane, vertical detail at bottom-left pane and finally diagonal detail at bottom-right pane.}
+\end{figure}
+
+Haar DWT transform is widely used in image processing for denoising and compression. High frequency
+terms obtained by subtraction for photographic images produce near-Laplace distributions which can be
+densely compressed by entropy encoders. Such approach was implemented with great success in JPEG2000
+and more modern FLIF and JPEGXL codecs. There is also a quantization opportunity in lower Haar tree layers,
+since they transfer information about very small fluctuations in signal we can remove some of it without 
+changing quality of the picture.
 \subsection{Color transform}
+Digital images in their raw form are stored and displayed as a set of channels represented by matrices $D_c \in \mathbb{N}^{h\times w}$
+where $c$ denotes the channel, $h$ height and $w$ width. In digital photography channel values are quantized into a pallete of possible colors and stored
+in $D_c$ matrix. Most simple form of digital image is grayscale with only 1 channel, that describes each pixel grayness
+as a number between 0 (black) and 255 (white). With color images there will be 3 or more channels that describe each 
+compound color as a value from range of possible quantized buckets. There are encodings that allow these ranges to exceed
+1 byte (HDR), however in this thesis for simplicity I will work on grayscale and color images with 8 bits for each channel
+value. With this assumption whole $n$-channeled image Im$_n$ can be put as:
+\[
+    \text{Im}_n = \{D_i \in \{0,\ldots, 255\}^{w\times h} |\, i \in [1, n]\}
+\]
+
+RGB encoding is commonly used in display screens, but for storage there are more sophisticated ways to 
+encode the image decorrelating the channels. Within digital image processing field there is a well-known fact [citation] that human visual system is much more 
+sensitive to the variation of brightness than to change chromacity. To address this lossy codecs use different
+color encodings that allow to compress chroma channels harsher than lumacity, resulting in visually better
+quality in lossily compressed images. 
+
+One such color encoding is widely used is YBrCr, which decorrelates colors    
+from brighteness. The transformation from RGB to YBrCr can be defined as:
+\[
+    \begin{pmatrix}
+        Y \\
+        C_B \\
+        C_R
+    \end{pmatrix} = 
+    \begin{pmatrix}
+        16 \\ 128 \\ 128
+    \end{pmatrix}
+    +
+    \begin{pmatrix}
+        65.481 & 128.553 & 24.966 \\
+        -37.797 & -74.203 & 112.0 \\
+        112.0 & -93.786 & -18.214 \\
+    \end{pmatrix}
+    \begin{pmatrix}
+        R \\ G \\ B
+    \end{pmatrix}
+\]
+Reverse transformation is by inverting the operations to obtain $RGB$ values. Due to rounding errors in 
+computer systems this color space transform is itself lossy, but there is a variation of YCbCr called RCT (Reversible Color Transform)
+used in lossless mode of JPEG2000 codec and defined by following transformation
+\begin{align*}
+    Y &= \left\lfloor\frac{R + 2G + B}{4}\right\rfloor\\
+    C_B &= B - G\\
+    C_R &= R-G\\ 
+\end{align*}
+
+and its reverse counterpart
+
+\begin{align*}
+    G &= Y - \left\lfloor \frac{C_B + C_R}{4} \right\rfloor\\ 
+    R &= C_R + G\\
+    B &= C_B + G\\
+\end{align*}
+
+
+
+
+\subsection{Prediction}
+An important aspect to image compression is to leverage spatial dependencies within the image processed. Most codecs 
+gain substantial bits per pixel improvements by dividing encoded data into a set of contexts, that share similar 
+probabilistic properties. Optimizing context modeling is important as it can minimize entropy within an image. 
+Such separate sets are encoded by separate entropy encoders to maximize the savings.
+In wavelet transform we encode residuals from more and more downsampled image areas, which alone serves as a value prediction mechanism: instead of encoding 
+exact pixel values encoder transforms input data with wavelets into a representation that has innate Laplace distribution. These values
+can be further enhanced by calculating differences in areas neighboring the encoded one. Most predictors does not use wavelets
+but solely depends on the previously encoded values. LOCO-I encoder for each pixel keeps the context of 5 previous values, calculating their sum 
+and gradients to predict both the value and the context that this value belong to.
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}
+        \draw (-1.5,-0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-0.5,1.5) -- (-0.5,0.5) -- (-0.5,-0.5) -- (-1.5,-0.5) -- (-1.5,0.5) -- cycle ;
+        \draw (-1.5,0.5) -- (-0.5,0.5);
+        \draw (-0.5,0.5) -- (0.5,0.5) -- (1.5,0.5) -- (1.5,1.5) -- (0.5,1.5) -- (-0.5,1.5) -- cycle;
+        % \draw (0.5,1.5) -- (1.5,1.5);
+        \draw (-0.5, -0.5) -- (0.5, -0.5) -- (0.5, 0.5) -- (0.5, 1.5);
+        \draw (-1.5, -0.5) -- (-2.5, -0.5) -- (-2.5, 0.5) -- (-1.5, 0.5) -- cycle;
+        \draw (0,0.0) node[anchor = center]{$x$};
+        \draw (-1,0) node[anchor = center]{$B$};
+        \draw (0,1) node[anchor = center]{$A$};
+        \draw (-1,1) node[anchor = center]{$C$};
+        \draw (1,1) node[anchor = center]{$D$};
+        \draw (-2,0) node[anchor = center]{$E$};
+    \end{tikzpicture}
+    \caption{Example context for value $x$} 
+\end{figure}
+
+For each encoded pixel example encoder with context described in Fig. 8 can calculate prediction of value basing on $c = (A,B,C,D,E)$ context
+\[
+    \widehat{x} = \alpha_1A + \alpha_2B + \alpha_3C + \alpha_4D + \alpha_5E
+\] 
+and then only encode $\epsilon = x - \widehat{x}$. Such $\epsilon$-residuals should also follow Laplace
+distribution, however to entropy encode them codec must provide the width parameter $b$ of distribution.
+Ideally that would be achieved by predicting this parameter from context as well, and storing obtained
+parameters in header for decoding. Popular alternative is to save whole histogram of value frequency
+in encoded data, but this gives an overhead on the header with large amount of contexts. LOCO-I for 
+each context derive the width parameter used in Rice-Golomb codes[citation] using information about 
+surrounding gradients and then quantizing the values into fixed amount of buckets saves the parameters
+in header. The context in Figure 8 is designed to always allow decoder to derive information about
+current value with already decoded ones, otherwise the encoded datastream would be impossible to decode.
+\begin{figure}
+    \centering
+    \begin{tikzpicture}[domain=-3:3, scale=1]
+      \draw[very thin,color=gray] (-3,0) grid (3.0,5.0);
+
+      \draw[->] (-3,0) -- (3, 0) node[right] {$x$};
+      \draw[->] (0,0) -- (0,5.0) node[above] {$P(x)$};
+
+      \draw[color=red]    plot (\x,{1/(0.5* 0.5)*exp(-(abs(\x-0)/0.5))});
+    \end{tikzpicture}
+    \caption{Laplace distribution with $\mu = 0 \ \ b = 0.5$}
+\end{figure}
+
+
+\subsection{Entropy coding}
+Crucial element of each compression method is the entropy coding step. Entropy encoding algorithms are used widely
+to encompass the probabilistic redundancies seen in processed data to reduce memory footprint. Encoded stream will assign
+shorter bit-wise codewords for more common symbols in input. Historically Huffman's algorithm and arithmetic coding algorithms
+were used for that purpose, however both of them had their limitations. Huffman's can not adapt to every 
+data probability distribution (level encoding with probabilities as powers of $\frac{1}{2}$) and Arithmetic
+coding (AC), while adaptive to all distributions, was relatively slow and laid with patents. Fortunately in 21st century
+J. Duda  in [citation] proposed a novel entropy compression scheme called Asymmetric Numeral Systems (ANS) which combines the 
+efficiency of AC and speed of Huffman's, delivering near-entropy code lengths with high speed.
+
+ANS for given probability distribution of input datastream assigns
+a numeral system with asymmetric base and encodes the data as 
+a one number, multiplying initial state by each encoded symbol base. 
+To avoid rapid overflowing whenever the state after multiplication
+is larger than $k$ bits, the $k$ oldest bits are transferred to
+encoded datastream. To properly decode ANS, along with the datastream
+codec needs to store used probability distributions. Images typically are best described not as one distribution but as
+a set of different contexts with different probabilities depending
+on spatial dependencies within the image. Storing each distribution
+as a histogram gives the best approximation of probability distributions, however
+with many contexts this approach would diminish entropy coding gains due to a
+large header. To overcome this issue codec can, instead of signaling entire histograms,
+save only parameters of known probability distributions. It is a well-known fact
+that error residues in natural images follow Laplace distribution, which is
+modeled by 2 parameters: $u$ as median and $b$ as width. This way codec can 
+use hundreds of contexts with little header overhead. Similar approach is used
+in fieldwork in e.g. LOCO-I scheme.
+
+Nonetheless, signaling Laplace parameters can also produce large header overhead with highly dimensional 
+contexts. For such cases image compression codec could try to learn the parameters
+from prediction of local dependencies and save the learned weights in the header [citation].
+
+For multiple input distributions
+ANS leverage interleaved ANS entropy coders proposed by F. Giesen 
+in [citation], allowing for fast encoding and decoding of multiple
+different contexts into a one bytestream.
+
+While fast and adaptive, ANS has a single drawback of relying on a 
+stack based structure of appended symbols. For the decoder it means that
+the input data must be reversed in encoder step to be decoded in
+the right order. This limitation adds an overhead, however with
+a properly designed encoder the speed gains are prevailing.
+
+
+\subsection{Quality assessment}
+A hard problem in image compression lays in quality assessment. It is difficult to measure the quality of lossy compression scheme, because
+such metric must accommodate the human visual perception system. A simple mean squared error metric will show a substantial quality degradation on image that for each
+pixel is one bit brighter than the original. Common modification of MSE metric for images is PSNR (Peak Signal to Noise Ratio) metric, which evaluates 
+the logarithmic ratio of maximum signal value (for RGB8 images $max = 255$) to mean squared error:
+\[
+    PSNR = 20\cdot\log_{10}(max) - 10\cdot\log_{10}(MSE)
+\]
+PSNR is a better and widely used quality metric for lossy compression than MSE, but only when comparing compression within 
+the same image and the same codec [citation].
+
+To address these issues SSIM (Structural Similarity Index Measure) metric was introduced in Wang et al. [citation], which include the 
+idea of structural similarity, a notion that the spatially close pixel values have strong dependencies. The general case algorithm is 
+based on obtaining the structural similarity compounds of luminance, contrast and structure using mean, variance and covariance of chosen samples.
+
+A modern, widely used, modification of SSIM is SSIMULACRA2 developed by engineers at Cloudinary to include the recognition of the most common
+compression artifacts seen in various compression schemes.

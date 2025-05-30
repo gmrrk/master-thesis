@@ -2,6 +2,8 @@ with import <nixpkgs> {};
 
 mkShell {
     packages = [
+        languagetool
+        ltex-ls
         (texlive.combine {
          inherit(texlive)
          scheme-small
@@ -25,6 +27,16 @@ mkShell {
          csquotes
          easylist
          placeins
+         tikz-cd
+         quiver
+         algorithms
+         algorithmicx
+         standalone
+         svn-prov
+         luatex85
+         relsize
+         carlisle
+         contour
 
 # Add other LaTeX libraries (packages) here as needed, e.g:
 # stmaryrd amsmath pgf

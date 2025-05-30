@@ -1,15 +1,741 @@
+\usetikzlibrary{backgrounds}
+\usetikzlibrary{shapes}
 \newpage
-\section{Compression method}
+\section{FRIF Compression method}
 
-\subsection{Algorithm overview}
 
-\subsection{Construction of fractal grid}
+FRIF is build on the idea of decomposing an image into a lattice of complex-based
+fractals, performing Haar wavelet transform and leveraging spatial dependencies for context modelling.
 
-\subsection{Choice of wavelet}
+\begin{figure}[ht]
+% https://q.uiver.app/#q=WzAsMTUsWzAsMSwiXFx0ZXh0e0NvbG9yIFRyYW5zZm9ybX0iXSxbMCwyLCJcXHRleHR7RnJhY3RhbCBkZWNvbXBvc2l0aW9ufSJdLFswLDMsIlxcdGV4dHtXYXZlbGV0IHRyYW5zZm9ybX0iXSxbMCw0LCJcXHRleHR7UXVhbnRpemF0aW9ufSJdLFswLDUsIlxcdGV4dHtDb250ZXh0IG1vZGVsbGluZ30iXSxbMCw2LCJcXHRleHR7QU5TIGNvZGluZ30iXSxbMCw3LCJcXHRleHR7U2VyaWFsaXphdGlvbn0iXSxbMiwxLCJcXHRleHR7SW52ZXJzZSBDb2xvciBUcmFuc2Zvcm19Il0sWzEsOCwiXFx0ZXh0e0ZSSUYgSW1hZ2V9Il0sWzIsNywiXFx0ZXh0e0Rlc2VyaWFsaXphdGlvbn0iXSxbMiw2LCJcXHRleHR7QU5TIGRlY29kaW5nfSJdLFsyLDQsIlxcdGV4dHtEZXF1YW50aXphdGlvbn0iXSxbMiwzLCJcXHRleHR7SW52ZXJzZSB3YXZlbGV0IHRyYW5zZm9ybX0iXSxbMiwyLCJcXHRleHR7UmV0cmlldmUgcGl4ZWwgdmFsdWVzfSJdLFsxLDAsIlxcdGV4dHtSYXcgSW1hZ2V9Il0sWzAsMSwiIiwwLHsibGV2ZWwiOjJ9XSxbMSwyLCIiLDAseyJsZXZlbCI6Mn1dLFsyLDMsIiIsMCx7ImxldmVsIjoyfV0sWzMsNCwiIiwwLHsibGV2ZWwiOjJ9XSxbNCw1LCIiLDAseyJsZXZlbCI6Mn1dLFs1LDYsIiIsMCx7ImxldmVsIjoyfV0sWzYsOCwiIiwwLHsiY3VydmUiOjIsImxldmVsIjoyfV0sWzE0LDAsIiIsMCx7ImN1cnZlIjoyLCJsZXZlbCI6Mn1dLFs4LDksIiIsMCx7ImN1cnZlIjoyLCJsZXZlbCI6Mn1dLFs5LDEwLCIiLDAseyJsZXZlbCI6Mn1dLFsxMCwxMSwiIiwwLHsibGV2ZWwiOjJ9XSxbMTEsMTIsIiIsMCx7ImxldmVsIjoyfV0sWzEyLDEzLCIiLDAseyJsZXZlbCI6Mn1dLFsxMyw3LCIiLDAseyJsZXZlbCI6Mn1dLFs3LDE0LCIiLDAseyJjdXJ2ZSI6MiwibGV2ZWwiOjJ9XV0=
+\[\begin{tikzcd}[scale=0.7]
+	& {\text{Raw Image}} \\
+	{\text{Color Transform}} && {\text{Inverse Color Transform}} \\
+	{\text{Fractal decomposition}} && {\text{Retrieve pixel values}} \\
+	{\text{Wavelet transform}} && {\text{Inverse wavelet transform}} \\
+	{\text{Quantization}} && {\text{Dequantization}} \\
+	{\text{Context modelling}} \\
+	{\text{ANS coding}} && {\text{ANS decoding}} \\
+	{\text{Serialization}} && {\text{Deserialization}} \\
+	& {\text{FRIF Image}}
+	\arrow[curve={height=12pt}, Rightarrow, from=1-2, to=2-1]
+	\arrow[Rightarrow, from=2-1, to=3-1]
+	\arrow[curve={height=12pt}, Rightarrow, from=2-3, to=1-2]
+	\arrow[Rightarrow, from=3-1, to=4-1]
+	\arrow[Rightarrow, from=3-3, to=2-3]
+	\arrow[Rightarrow, from=4-1, to=5-1]
+	\arrow[Rightarrow, from=4-3, to=3-3]
+	\arrow[Rightarrow, from=5-1, to=6-1]
+	\arrow[Rightarrow, from=5-3, to=4-3]
+	\arrow[Rightarrow, from=6-1, to=7-1]
+	\arrow[Rightarrow, from=7-1, to=8-1]
+	\arrow[Rightarrow, from=7-3, to=5-3]
+	\arrow[curve={height=12pt}, Rightarrow, from=8-1, to=9-2]
+	\arrow[Rightarrow, from=8-3, to=7-3]
+	\arrow[curve={height=12pt}, Rightarrow, from=9-2, to=8-3]
+\end{tikzcd}\]
+\caption{High-level overview od FRIF codec. Encoder forward steps are shown
+on the left with decoder steps on the right.}
+\end{figure}
+Each of described transforms is applied separately for each channel, which could be 
+parallelized on multicore systems. Almost all steps are symmetrical for coding and decoding,
+decoder does not perform context modelling since all required information are signaled in image header
 
-\subsection{Prediction}
+In following subsections I will step by step present all steps required to properly encode and
+decode FRIF image. This section will serve as a full format specification with proposed byte arrangement
+for $.frif$ files in the Serialization section.
+\subsection{Color transform}
+After receiving a raw image first step is to transform its color space to one that
+decorelates the channel data. FRIF supports Grayscale images (single channel, 8 bit per pixel)
+or RGB True Color (3 channels, 8 bit per channel 24 bits per pixel).
 
+Color transform for grayscale images is redundant, codec will simply pass unmodified pixel values to the next stage.
+RGB images will be transformed into YCrCb colorspace in lossy mode and into RCT colorspace in lossless mode as described in section 2.3.
+There is a space left for optimization with color transform described by J. Duda in [citation].
+
+\newpage
+
+\subsection{Fractal decomposition}
+
+On the second step FRIF will divide the image into lattice of complex-based fractals. Lattice is stored as a dictionary data structure
+for fast coordinate lookup.
+
+\[
+    F: \mathbb{C}\ni c \rightarrow A^9_c
+\] 
+where $A^9_c$ are wavelet coefficients that will describe image contained in fractal of center in $c$.
+Depth of $A_i$ set described in section 2.1 is arbitrary chosen as $i := 9$, which covers $2^9$ (512) pixel values. 
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=0.1]
+        \draw (-0.5,-8.5) -- (-0.5,-7.5) -- (-1.5,-7.5) -- (-1.5,-6.5) -- (-2.5,-6.5) -- (-2.5,-7.5) -- (-3.5,-7.5) -- (-3.5,-6.5) -- (-4.5,-6.5) -- (-4.5,-7.5) -- (-5.5,-7.5) -- (-5.5,-6.5) -- (-6.5,-6.5) -- (-6.5,-5.5) -- (-6.5,-4.5) -- (-5.5,-4.5) -- (-5.5,-5.5) -- (-4.5,-5.5) -- (-4.5,-4.5) -- (-4.5,-3.5) -- (-5.5,-3.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-1.5,5.5) -- (-2.5,5.5) -- (-2.5,6.5) -- (-2.5,7.5) -- (-1.5,7.5) -- (-1.5,6.5) -- (-0.5,6.5) -- (-0.5,7.5) -- (-0.5,8.5) -- (-1.5,8.5) -- (-1.5,9.5) -- (-1.5,10.5) -- (-0.5,10.5) -- (-0.5,9.5) -- (0.5,9.5) -- (0.5,10.5) -- (1.5,10.5) -- (1.5,11.5) -- (2.5,11.5) -- (2.5,10.5) -- (3.5,10.5) -- (3.5,11.5) -- (4.5,11.5) -- (4.5,10.5) -- (5.5,10.5) -- (5.5,9.5) -- (6.5,9.5) -- (6.5,10.5) -- (7.5,10.5) -- (7.5,9.5) -- (8.5,9.5) -- (8.5,10.5) -- (9.5,10.5) -- (9.5,11.5) -- (10.5,11.5) -- (10.5,10.5) -- (11.5,10.5) -- (11.5,11.5) -- (12.5,11.5) -- (12.5,12.5) -- (13.5,12.5) -- (13.5,11.5) -- (14.5,11.5) -- (14.5,12.5) -- (15.5,12.5) -- (15.5,11.5) -- (16.5,11.5) -- (16.5,10.5) -- (17.5,10.5) -- (17.5,11.5) -- (18.5,11.5) -- (18.5,10.5) -- (19.5,10.5) -- (19.5,11.5) -- (20.5,11.5) -- (20.5,10.5) -- (21.5,10.5) -- (21.5,9.5) -- (21.5,8.5) -- (20.5,8.5) -- (20.5,9.5) -- (19.5,9.5) -- (19.5,8.5) -- (19.5,7.5) -- (20.5,7.5) -- (20.5,6.5) -- (21.5,6.5) -- (21.5,7.5) -- (22.5,7.5) -- (22.5,6.5) -- (23.5,6.5) -- (23.5,7.5) -- (24.5,7.5) -- (24.5,6.5) -- (25.5,6.5) -- (25.5,5.5) -- (26.5,5.5) -- (26.5,6.5) -- (27.5,6.5) -- (27.5,5.5) -- (28.5,5.5) -- (28.5,6.5) -- (29.5,6.5) -- (29.5,5.5) -- (30.5,5.5) -- (30.5,4.5) -- (30.5,3.5) -- (29.5,3.5) -- (29.5,4.5) -- (28.5,4.5) -- (28.5,3.5) -- (28.5,2.5) -- (29.5,2.5) -- (29.5,1.5) -- (29.5,0.5) -- (28.5,0.5) -- (28.5,1.5) -- (27.5,1.5) -- (27.5,0.5) -- (26.5,0.5) -- (26.5,-0.5) -- (25.5,-0.5) -- (25.5,0.5) -- (24.5,0.5) -- (24.5,-0.5) -- (23.5,-0.5) -- (23.5,0.5) -- (22.5,0.5) -- (22.5,1.5) -- (21.5,1.5) -- (21.5,0.5) -- (20.5,0.5) -- (20.5,1.5) -- (19.5,1.5) -- (19.5,0.5) -- (18.5,0.5) -- (18.5,-0.5) -- (17.5,-0.5) -- (17.5,0.5) -- (16.5,0.5) -- (16.5,-0.5) -- (16.5,-1.5) -- (17.5,-1.5) -- (17.5,-2.5) -- (17.5,-3.5) -- (16.5,-3.5) -- (16.5,-2.5) -- (15.5,-2.5) -- (15.5,-3.5) -- (15.5,-4.5) -- (16.5,-4.5) -- (16.5,-5.5) -- (16.5,-6.5) -- (15.5,-6.5) -- (15.5,-5.5) -- (14.5,-5.5) -- (14.5,-6.5) -- (13.5,-6.5) -- (13.5,-7.5) -- (12.5,-7.5) -- (12.5,-6.5) -- (11.5,-6.5) -- (11.5,-7.5) -- (10.5,-7.5) -- (10.5,-6.5) -- (9.5,-6.5) -- (9.5,-5.5) -- (8.5,-5.5) -- (8.5,-6.5) -- (7.5,-6.5) -- (7.5,-5.5) -- (6.5,-5.5) -- (6.5,-6.5) -- (5.5,-6.5) -- (5.5,-7.5) -- (4.5,-7.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-7.5) -- (2.5,-7.5) -- (2.5,-8.5) -- (1.5,-8.5) -- (1.5,-7.5) -- (0.5,-7.5) -- (0.5,-8.5) -- (-0.5,-8.5) -- (-0.5,-7.5) -- cycle;
+    \end{tikzpicture}
+    \caption{$A^9_c$ set}
+\end{figure}
+
+Then separately for each channel
+FRIF, starting from point $c = width/2$ + $height/2\cdot i$, fills the plane with fractals with iteratively expansion
+of $\mathcal{N}_i$ sets. Detailed logic can be seen in Algorithm 1.
+
+\begin{algorithm}[ht]
+    \small
+    \caption{Fractal fill for image width and height}
+    \begin{algorithmic}[1]
+        \Procedure{FractalFill}{width, height}
+        \State $c \gets \, \frac{width}{2}$ + $\frac{height}{2}i$
+        \State queue $\gets [c]$
+        \State lattice $\gets \{\}$
+        \While{queue.size() $\not= 0$}
+            \State current = queue.pop\_front()
+            \State lattice.insert($\{\text{current}, A^9_{\text{current}}\}$)
+            \If{Re(current) $\in$ [$0,\,\ldots,\,$width] \&\& Im(current) $\in$ [$0,\,\ldots,\,$height]}
+            \State neighbours $\gets \mathcal{N}^i_{\text{current}}$
+            \For{neighbour $\in$ neighbours}
+            \If {neighbour $\not\in$ lattice \&\& neighbour $\not\in$ queue}
+                \State queue.push\_back(neighbour)
+            \EndIf
+            \EndFor
+            \EndIf
+        \EndWhile
+        \State \textbf{return} lattice
+        \EndProcedure
+
+    \end{algorithmic} 
+    \label{algo:fracdec}
+\end{algorithm}
+It is worth to mention that Algorithm 1 can insert a fractal that does not share a point with width$\times$height rectangle
+due to lattice insertion before inclusion condition. This is an expected behavior, as it needs to include fractals with translation
+outside of image boundaries that may have an intersection with image rectangle. Greedy adding $A^9_c$ sets this way can lead to an empty intersection
+with rectangle, but such fractals will be pruned in following stages.
+
+\begin{figure}[ht]
+    \centering
+    \includegraphics[scale=0.45]{figures/compression_algorithm/fracdecomp.png}
+    \caption{Example decomposition of a rectangle into fractals. Red cross marks the $A^9_0$ set}
+    \label{fig:fracdecomp} 
+\end{figure}
+
+For encoding image pixel values each fractal in lattice also contains a map of actual image positions for each set. 
+Recursively $A^i_c$ can be expressed as:
+\begin{align}
+    &A^i_c = A^{i-1}_c \cup A^{i-1}_{c + z^i}\\
+    &A^1_c = \{c, c + z\}
+\end{align}
+To retrieve all positions $c$ on level $i$ FRIF iteratively calculates the translations of its decomposition children
+and stores them in array $C$ of length $2^9$ that represent a tree like structure. 
+Starting from $C_1 = c$  for $A^9_c$ it saves both translations of union elements from (7) to $C_2$ and $C_3$.
+Consequentially $C_{2p}$ and $C_{2p+1}$ corresponds to translations calculated from parent fractal with translation $C_p$.
+
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-0.5,-8.5) -- (-0.5,-7.5) -- (-1.5,-7.5) -- (-1.5,-6.5) -- (-2.5,-6.5) -- (-2.5,-7.5) -- (-3.5,-7.5) -- (-3.5,-6.5) -- (-4.5,-6.5) -- (-4.5,-7.5) -- (-5.5,-7.5) -- (-5.5,-6.5) -- (-6.5,-6.5) -- (-6.5,-5.5) -- (-6.5,-4.5) -- (-5.5,-4.5) -- (-5.5,-5.5) -- (-4.5,-5.5) -- (-4.5,-4.5) -- (-4.5,-3.5) -- (-5.5,-3.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-1.5,5.5) -- (-2.5,5.5) -- (-2.5,6.5) -- (-2.5,7.5) -- (-1.5,7.5) -- (-1.5,6.5) -- (-0.5,6.5) -- (-0.5,7.5) -- (-0.5,8.5) -- (-1.5,8.5) -- (-1.5,9.5) -- (-1.5,10.5) -- (-0.5,10.5) -- (-0.5,9.5) -- (0.5,9.5) -- (0.5,10.5) -- (1.5,10.5) -- (1.5,11.5) -- (2.5,11.5) -- (2.5,10.5) -- (3.5,10.5) -- (3.5,11.5) -- (4.5,11.5) -- (4.5,10.5) -- (5.5,10.5) -- (5.5,9.5) -- (6.5,9.5) -- (6.5,10.5) -- (7.5,10.5) -- (7.5,9.5) -- (8.5,9.5) -- (8.5,10.5) -- (9.5,10.5) -- (9.5,11.5) -- (10.5,11.5) -- (10.5,10.5) -- (11.5,10.5) -- (11.5,11.5) -- (12.5,11.5) -- (12.5,12.5) -- (13.5,12.5) -- (13.5,11.5) -- (14.5,11.5) -- (14.5,12.5) -- (15.5,12.5) -- (15.5,11.5) -- (16.5,11.5) -- (16.5,10.5) -- (17.5,10.5) -- (17.5,11.5) -- (18.5,11.5) -- (18.5,10.5) -- (19.5,10.5) -- (19.5,11.5) -- (20.5,11.5) -- (20.5,10.5) -- (21.5,10.5) -- (21.5,9.5) -- (21.5,8.5) -- (20.5,8.5) -- (20.5,9.5) -- (19.5,9.5) -- (19.5,8.5) -- (19.5,7.5) -- (20.5,7.5) -- (20.5,6.5) -- (21.5,6.5) -- (21.5,7.5) -- (22.5,7.5) -- (22.5,6.5) -- (23.5,6.5) -- (23.5,7.5) -- (24.5,7.5) -- (24.5,6.5) -- (25.5,6.5) -- (25.5,5.5) -- (26.5,5.5) -- (26.5,6.5) -- (27.5,6.5) -- (27.5,5.5) -- (28.5,5.5) -- (28.5,6.5) -- (29.5,6.5) -- (29.5,5.5) -- (30.5,5.5) -- (30.5,4.5) -- (30.5,3.5) -- (29.5,3.5) -- (29.5,4.5) -- (28.5,4.5) -- (28.5,3.5) -- (28.5,2.5) -- (29.5,2.5) -- (29.5,1.5) -- (29.5,0.5) -- (28.5,0.5) -- (28.5,1.5) -- (27.5,1.5) -- (27.5,0.5) -- (26.5,0.5) -- (26.5,-0.5) -- (25.5,-0.5) -- (25.5,0.5) -- (24.5,0.5) -- (24.5,-0.5) -- (23.5,-0.5) -- (23.5,0.5) -- (22.5,0.5) -- (22.5,1.5) -- (21.5,1.5) -- (21.5,0.5) -- (20.5,0.5) -- (20.5,1.5) -- (19.5,1.5) -- (19.5,0.5) -- (18.5,0.5) -- (18.5,-0.5) -- (17.5,-0.5) -- (17.5,0.5) -- (16.5,0.5) -- (16.5,-0.5) -- (16.5,-1.5) -- (17.5,-1.5) -- (17.5,-2.5) -- (17.5,-3.5) -- (16.5,-3.5) -- (16.5,-2.5) -- (15.5,-2.5) -- (15.5,-3.5) -- (15.5,-4.5) -- (16.5,-4.5) -- (16.5,-5.5) -- (16.5,-6.5) -- (15.5,-6.5) -- (15.5,-5.5) -- (14.5,-5.5) -- (14.5,-6.5) -- (13.5,-6.5) -- (13.5,-7.5) -- (12.5,-7.5) -- (12.5,-6.5) -- (11.5,-6.5) -- (11.5,-7.5) -- (10.5,-7.5) -- (10.5,-6.5) -- (9.5,-6.5) -- (9.5,-5.5) -- (8.5,-5.5) -- (8.5,-6.5) -- (7.5,-6.5) -- (7.5,-5.5) -- (6.5,-5.5) -- (6.5,-6.5) -- (5.5,-6.5) -- (5.5,-7.5) -- (4.5,-7.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-7.5) -- (2.5,-7.5) -- (2.5,-8.5) -- (1.5,-8.5) -- (1.5,-7.5) -- (0.5,-7.5) -- (0.5,-8.5) -- (-0.5,-8.5) -- (-0.5,-7.5) -- cycle;
+        \draw (-0.5,-8.5) -- (-0.5,-7.5) -- (-1.5,-7.5) -- (-1.5,-6.5) -- (-2.5,-6.5) -- (-2.5,-7.5) -- (-3.5,-7.5) -- (-3.5,-6.5) -- (-4.5,-6.5) -- (-4.5,-7.5) -- (-5.5,-7.5) -- (-5.5,-6.5) -- (-6.5,-6.5) -- (-6.5,-5.5) -- (-6.5,-4.5) -- (-5.5,-4.5) -- (-5.5,-5.5) -- (-4.5,-5.5) -- (-4.5,-4.5) -- (-4.5,-3.5) -- (-5.5,-3.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (8.5,-0.5) -- (8.5,0.5) -- (9.5,0.5) -- (9.5,-0.5) -- (10.5,-0.5) -- (10.5,0.5) -- (11.5,0.5) -- (11.5,-0.5) -- (12.5,-0.5) -- (12.5,-1.5) -- (13.5,-1.5) -- (13.5,-0.5) -- (14.5,-0.5) -- (14.5,-1.5) -- (15.5,-1.5) -- (15.5,-0.5) -- (16.5,-0.5) -- (16.5,-1.5) -- (17.5,-1.5) -- (17.5,-2.5) -- (17.5,-3.5) -- (16.5,-3.5) -- (16.5,-2.5) -- (15.5,-2.5) -- (15.5,-3.5) -- (15.5,-4.5) -- (16.5,-4.5) -- (16.5,-5.5) -- (16.5,-6.5) -- (15.5,-6.5) -- (15.5,-5.5) -- (14.5,-5.5) -- (14.5,-6.5) -- (13.5,-6.5) -- (13.5,-7.5) -- (12.5,-7.5) -- (12.5,-6.5) -- (11.5,-6.5) -- (11.5,-7.5) -- (10.5,-7.5) -- (10.5,-6.5) -- (9.5,-6.5) -- (9.5,-5.5) -- (8.5,-5.5) -- (8.5,-6.5) -- (7.5,-6.5) -- (7.5,-5.5) -- (6.5,-5.5) -- (6.5,-6.5) -- (5.5,-6.5) -- (5.5,-7.5) -- (4.5,-7.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-7.5) -- (2.5,-7.5) -- (2.5,-8.5) -- (1.5,-8.5) -- (1.5,-7.5) -- (0.5,-7.5) -- (0.5,-8.5) -- (-0.5,-8.5) -- (-0.5,-7.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-0.5,-8.5) -- (-0.5,-7.5) -- (-1.5,-7.5) -- (-1.5,-6.5) -- (-2.5,-6.5) -- (-2.5,-7.5) -- (-3.5,-7.5) -- (-3.5,-6.5) -- (-4.5,-6.5) -- (-4.5,-7.5) -- (-5.5,-7.5) -- (-5.5,-6.5) -- (-6.5,-6.5) -- (-6.5,-5.5) -- (-6.5,-4.5) -- (-5.5,-4.5) -- (-5.5,-5.5) -- (-4.5,-5.5) -- (-4.5,-4.5) -- (-4.5,-3.5) -- (-5.5,-3.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (8.5,-0.5) -- (8.5,0.5) -- (9.5,0.5) -- (9.5,-0.5) -- (10.5,-0.5) -- (10.5,0.5) -- (11.5,0.5) -- (11.5,-0.5) -- (12.5,-0.5) -- (12.5,-1.5) -- (13.5,-1.5) -- (13.5,-0.5) -- (14.5,-0.5) -- (14.5,-1.5) -- (15.5,-1.5) -- (15.5,-0.5) -- (16.5,-0.5) -- (16.5,-1.5) -- (17.5,-1.5) -- (17.5,-2.5) -- (17.5,-3.5) -- (16.5,-3.5) -- (16.5,-2.5) -- (15.5,-2.5) -- (15.5,-3.5) -- (15.5,-4.5) -- (16.5,-4.5) -- (16.5,-5.5) -- (16.5,-6.5) -- (15.5,-6.5) -- (15.5,-5.5) -- (14.5,-5.5) -- (14.5,-6.5) -- (13.5,-6.5) -- (13.5,-7.5) -- (12.5,-7.5) -- (12.5,-6.5) -- (11.5,-6.5) -- (11.5,-7.5) -- (10.5,-7.5) -- (10.5,-6.5) -- (9.5,-6.5) -- (9.5,-5.5) -- (8.5,-5.5) -- (8.5,-6.5) -- (7.5,-6.5) -- (7.5,-5.5) -- (6.5,-5.5) -- (6.5,-6.5) -- (5.5,-6.5) -- (5.5,-7.5) -- (4.5,-7.5) -- (4.5,-6.5) -- (3.5,-6.5) -- (3.5,-7.5) -- (2.5,-7.5) -- (2.5,-8.5) -- (1.5,-8.5) -- (1.5,-7.5) -- (0.5,-7.5) -- (0.5,-8.5) -- (-0.5,-8.5) -- (-0.5,-7.5) -- cycle;
+        \draw (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-2.5) -- (-4.5,-2.5) -- (-4.5,-1.5) -- (-5.5,-1.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-9.5,-3.5) -- (-9.5,-2.5) -- (-10.5,-2.5) -- (-10.5,-1.5) -- (-11.5,-1.5) -- (-11.5,-2.5) -- (-12.5,-2.5) -- (-12.5,-1.5) -- (-13.5,-1.5) -- (-13.5,-2.5) -- (-14.5,-2.5) -- (-14.5,-1.5) -- (-15.5,-1.5) -- (-15.5,-0.5) -- (-15.5,0.5) -- (-14.5,0.5) -- (-14.5,-0.5) -- (-13.5,-0.5) -- (-13.5,0.5) -- (-13.5,1.5) -- (-14.5,1.5) -- (-14.5,2.5) -- (-14.5,3.5) -- (-13.5,3.5) -- (-13.5,2.5) -- (-12.5,2.5) -- (-12.5,3.5) -- (-11.5,3.5) -- (-11.5,4.5) -- (-10.5,4.5) -- (-10.5,3.5) -- (-9.5,3.5) -- (-9.5,4.5) -- (-8.5,4.5) -- (-8.5,3.5) -- (-7.5,3.5) -- (-7.5,2.5) -- (-6.5,2.5) -- (-6.5,3.5) -- (-5.5,3.5) -- (-5.5,2.5) -- (-4.5,2.5) -- (-4.5,3.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-2.5) -- (-4.5,-2.5) -- (-4.5,-1.5) -- (-5.5,-1.5) -- (-5.5,-2.5) -- (-6.5,-2.5) -- (-6.5,-3.5) -- (-7.5,-3.5) -- (-7.5,-2.5) -- (-8.5,-2.5) -- (-8.5,-3.5) -- (-9.5,-3.5) -- (-9.5,-2.5) -- cycle;
+        \draw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-2.5,2.5) -- (-3.5,2.5) -- (-3.5,3.5) -- (-3.5,4.5) -- (-2.5,4.5) -- (-2.5,3.5) -- (-1.5,3.5) -- (-1.5,4.5) -- (-0.5,4.5) -- (-0.5,5.5) -- (0.5,5.5) -- (0.5,4.5) -- (1.5,4.5) -- (1.5,5.5) -- (2.5,5.5) -- (2.5,4.5) -- (3.5,4.5) -- (3.5,3.5) -- (4.5,3.5) -- (4.5,4.5) -- (5.5,4.5) -- (5.5,3.5) -- (6.5,3.5) -- (6.5,4.5) -- (7.5,4.5) -- (7.5,3.5) -- (8.5,3.5) -- (8.5,2.5) -- (8.5,1.5) -- (7.5,1.5) -- (7.5,2.5) -- (6.5,2.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+        \draw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (3.5,0.5) -- (3.5,1.5) -- (4.5,1.5) -- (4.5,0.5) -- (5.5,0.5) -- (5.5,1.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (1.5,-2.5) -- (1.5,-1.5) -- (0.5,-1.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (3.5,0.5) -- (3.5,1.5) -- (4.5,1.5) -- (4.5,0.5) -- (5.5,0.5) -- (5.5,1.5) -- (6.5,1.5) -- (6.5,0.5) -- (7.5,0.5) -- (7.5,-0.5) -- (7.5,-1.5) -- (6.5,-1.5) -- (6.5,-0.5) -- (5.5,-0.5) -- (5.5,-1.5) -- (4.5,-1.5) -- (4.5,-2.5) -- (3.5,-2.5) -- (3.5,-1.5) -- (2.5,-1.5) -- (2.5,-2.5) -- (1.5,-2.5) -- (1.5,-1.5) -- cycle;
+        \draw (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-3.5,-1.5) -- (-3.5,-0.5) -- (-4.5,-0.5) -- (-4.5,0.5) -- (-4.5,1.5) -- (-3.5,1.5) -- (-3.5,0.5) -- (-2.5,0.5) -- (-2.5,1.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,-1.5) -- (-1.5,-1.5) -- (-1.5,-0.5) -- (-2.5,-0.5) -- (-2.5,-1.5) -- (-3.5,-1.5) -- (-3.5,-0.5) -- cycle;
+        \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,2.5) -- (1.5,2.5) -- (1.5,1.5) -- (2.5,1.5) -- (2.5,0.5) -- (2.5,-0.5) -- (1.5,-0.5) -- (1.5,0.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle;
+        \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,0.5) -- (0.5, -0.5) -- cycle;
+    \end{tikzpicture}
+    \hfill
+    \begin{tikzpicture}[scale=0.08] 
+        \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-1.5,2.5) -- (-0.5,2.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,0.5) -- (0.5, -0.5) -- cycle;
+        \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle ;
+    \end{tikzpicture}
+    \hfill
+    \caption{Recursive decomposition of $A^9_0$, for presentation only half of each split is shown. Last layer value is made up from 2 pixels}
+\end{figure}
+\newpage
+
+\subsection{Wavelet transform}
+After dividing an image to a lattice of fractals FRIF follows with wavelet transform. For each $A_c^9$ we would like to obtain
+a Haar Tree with $512$ coefficients and final sum as a result. Transform begins at the lowest layer of $A_c^9$ decomposition, which
+consists of $258$ sets $A^1_{c_j}$. Each of them corresponds to area of 2 pixels from which the transform will obtain first Haar tree
+layer of coefficients. Let $x$ = $(x_0\ldots x_n)$ - raw image and $H$ - Haar tree of depth 9. Then we can symbolically write:
+\begin{figure}[ht]
+    \centering
+    \begin{tikzpicture}[scale=0.95, transform shape]
+        \draw (-1.5,-0.5) -- (-1.5,0.5) -- (-1.5,1.5) -- (-0.5,1.5) -- (-0.5,0.5) -- (-0.5,-0.5) -- (-1.5,-0.5) -- (-1.5,0.5) -- cycle ;
+        \draw (-1.5,0.5) -- (-0.5,0.5);
+        \draw (-1, 0) node[anchor = center]{$x_{2i}$};
+        \draw (-1,1) node[anchor = center]{$x_{2i+1}$};
+        \draw (1 ,0.5) node[anchor = center]{$\times 258$};
+        \draw (2 ,0.5) node[anchor = center]{$\Longrightarrow$};
+        \draw (2.5, 1.0) node[anchor = west]{$H_i := h_i = x_{2i} - x_{2i+1}$};
+        \draw (2.5, 0) node[anchor = west]{$g_i = x_{2i+1} + h_i/2$};
+        \draw (7 ,0.5) node[anchor = center]{$\Longrightarrow$};
+        \draw (7.5,-0.5) -- (7.5, 0.5) -- (7.5,1.5) -- (8.5,1.5) -- (8.5,0.5) -- (8.5,-0.5) -- (7.5,-0.5) -- (7.5,0.5) -- cycle ;
+        \draw (8,0.5) node[anchor = center]{$H_i$};
+        \draw (9, 0.5) node[anchor = center]{$\times 128$};
+
+        \draw (-0.5,-4.5) -- (-0.5,-3.5) -- (-1.5,-3.5) -- (-1.5,-2.5) -- (-1.5,-1.5) -- (-0.5,-1.5) -- (-0.5,-2.5) -- (0.5,-2.5) -- (0.5,-3.5) -- (0.5, -4.5) -- cycle;
+        \draw (-0.5, -3.5) -- (-0.5, -2.5);
+        \draw (0,-3.5) node[anchor = center]{$H_{2i}$};
+        \draw (-1,-2.5) node[anchor = center]{$H_{2i + 1}$};
+        \draw (1 ,-3.5) node[anchor = center]{$\times 128$};
+        \draw (2 ,-3.5) node[anchor = center]{$\Longrightarrow$};
+        \draw (2.5, -3.0) node[anchor = west]{$H_i := h_i = g_{2i} - g_{2i+1}$};
+        \draw (2.5, -4) node[anchor = west]{$g_i = g_{2i+1} + h_i/2$};
+        \draw (7 ,-3.5) node[anchor = center]{$\Longrightarrow$};
+        \draw (8.5,-4.5) -- (8.5,-3.5) -- (7.5,-3.5) -- (7.5,-2.5) -- (7.5,-1.5) -- (8.5,-1.5) -- (8.5,-2.5) -- (9.5,-2.5) -- (9.5,-3.5) -- (9.5, -4.5) -- cycle;
+        \draw (8.5,-3.0) node[anchor = center]{$H_i$};
+        \draw (10, -3.5) node[anchor = center]{$\times 64$};
+    \end{tikzpicture}
+    \caption{First two layers wavelet transform, the differences are saved in Haar tree and the sum is passed upwards}
+\end{figure}
+
+Continuing this calculation forward we will obtain final high-pass filter coefficient for whole $A^9_c$ fractal in $H_1$, and we will 
+save the final sum $g_1$ in $H_0$. This process is repeated for all $A^9_c$ in fractal lattice.
+
+This transform is implemented with a very essential detail. As seen in Figure~\ref{fig:fracdecomp} there is a substantial amount
+of area around the boundary that does not correspond to pixel values in image. To avoid saving coefficients for such areas 
+we will cut Haar tree branches that does not contain information about actual image locations. It is done via simple check on the
+last layer: when transform step decomposes $A^1_c$ into $\{A^0_c,\, A^0_{c_d+z}\}$ it firstly verifies if $c_d$ and $c+z$ lays in the image.
+If they do, then we proceed with calculation, if one of them is outside we replace it by $0$ value. However, if both $c$ and $c_d$ are
+outside the image then we mark the Haar tree node as $null$ and pass $g_i$ value as $null$ as well. Then for higher layers we repeat this procedure 
+checking if $g_{2i}$ and $g_{2i+1}$ are not null et cetera. This way we can cut entire Haar wavelet tree branches on encoding step and 
+the decoder can derive information about which branches were cut by repeating the same fractal decomposition that is done in encoder.
+If the top sum value in wavelet tree $H_0$ is $null$ then it means that a whole $A^9_c$ set has an empty
+intersection with image. Such cases are entirely removed from the lattice.
+This effectively allows FRIF to not encode any additional coefficients besides those that are required to perform inverse wavelet transform.
+
+
+As an algorithm this process can be described as follows:
+
+\begin{algorithm}[ht]
+    \small
+    \caption{Fractal wavelet transform}
+    \begin{algorithmic}[1]
+        \Procedure{ExtractCoefficients}{image, channel, lattice, $c_i$ }
+        \State fractal $\gets \,$ lattice.get($c_i$)
+        \State $C$ $\gets$ fractal.positions
+        \State H $\gets [0; 1<<\text{fractal.depth}]$
+        \State g $\gets [0; 1<<\text{fractal.depth}]$
+        \For{level $\in\, [depth-1,\, depth-2,\ldots, 0]$}
+        \For{tree\_pos $\in [1<<\text{level},\, \ldots, 1<<\text{level+1})$}
+        \If{level $== depth -1$}
+            \State left $\gets$ image.get\_pixel($C_{2\text{tree\_pos}}$)
+            \State right $\gets$ image.get\_pixel($C_{2\text{tree\_pos +1}}$) 
+        \Else
+            \State left $\gets$  $g_{2\cdot\text{tree\_pos}}$
+            \State right $\gets$ $g_{2\cdot\text{tree\_pos +1}}$
+        \EndIf
+        \If {left == null \&\& right == null}
+            \State H$_{\text{tree\_pos}} =$ null
+            \State g$_{\text{tree\_pos}} =$ null
+        \ElsIf {left == null}
+            \State H$_{\text{tree\_pos}} = 0 - \text{right}$
+            \State g$_{\text{tree\_pos}} = \text{right} + \text{H}_{\text{tree\_pos}}$
+        \ElsIf {right == null}
+        \State H$_{\text{tree\_pos}} = \text{left} - 0$
+        \State g$_{\text{tree\_pos}} = 0 + \text{H}_{\text{tree\_pos}}$
+        \Else
+        \State H$_{\text{tree\_pos}} = \text{left} - \text{right}$
+        \State g$_{\text{tree\_pos}} = \text{right} + \text{H}_{\text{tree\_pos}}$
+        \EndIf
+
+        \EndFor
+        \EndFor
+        \State H$_0 \gets \text{g}_0$ 
+        \State \textbf{return} H
+        \EndProcedure
+
+    \end{algorithmic} 
+    \label{algo:wavelettransform}
+\end{algorithm}
+
+\subsection{Quantization}
+
+    Images often contain a good amount of visual information that is not percieved by human eye and can be 
+    removed without affecting the overall quality. Lossy codecs make use of this property by limiting 
+    the set of input values to a discrete one to minimize the size of encoded image, a process that in information theory is called quantization.
+    Codecs that use quantization are not lossless, because after quantization the image will no longer 
+    be mathematically the same as the input image, as some of the information will be lost. 
+    
+    \begin{figure}[ht]
+        \begin{center}
+            \begin{tikzpicture}
+            \draw[help lines, color=gray!30, dashed] (-4.9,-1) grid (4.9,1);
+            \draw[->,ultra thick] (-5.5,0)--(5.5,0) node[right]{$x$};
+            \draw[-,thick, dashed] (-5,0.5)--(-5,-0.5) node[below]{$-5\Delta$};
+            \filldraw (-4.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (-4,0.5)--(-4,-0.5) node[below]{$-4\Delta$};
+            \filldraw (-3.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (-3,0.5)--(-3,-0.5) node[below]{$-3\Delta$};
+            \filldraw (-2.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (-2,0.5)--(-2,-0.5) node[below]{$-2\Delta$};
+            \filldraw (-1.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (-1,0.5)--(-1,-0.5) node[below]{$-\Delta$};
+            \filldraw (0, 0) circle (2pt) node[above=5pt] {$0$};
+            \draw[-,thick, dashed] (1,0.5)--(1,-0.5) node[below]{$\Delta$};
+            \filldraw (1.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (2,0.5)--(2,-0.5) node[below]{$2\Delta$};
+            \filldraw (2.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (3,0.5)--(3,-0.5) node[below]{$3\Delta$};
+            \filldraw (3.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (4,0.5)--(4,-0.5) node[below]{$4\Delta$};
+            \filldraw (4.5, 0) circle (2pt) node[above=5pt] {$q$};
+            \draw[-,thick, dashed] (5,0.5)--(5,-0.5) node[below]{$5\Delta$};
+            \end{tikzpicture}
+        \end{center}
+        \caption{Dead-zone scalar quantizer with $\Delta$ quantization step. Each value between $\Delta$ values
+        are mapped to a nearest $q$ value. Interval for 0 value is a dead-zone, it is twice as big as regular interval
+        and maps values around it to 0}\label{fig:deadzone}
+    \end{figure}
+
+
+    Dead-zone scalar quantizer divides value space with a quantization step $\Delta$ to a set of intervals which 
+    are mapped to a single value $q$. 
+    FRIF offers an optional quantization step, based on dead-zone quantizer that for each layer will divide the Haar coefficient
+    values of layer $A_c^j$ by quantization step $\Delta_j$. The size of dead-zone can be adjusted by the user with encoder 
+    \texttt{quality} parameter, which as described in [citation] will adjust the size of dead-zone without affecting widths of remaining intervals. 
+    Quality parameter is given as input to the encoder as an integer between $1$ and $100$, where $1$ is for widest quantization step and 
+    $100$ is for lossless quantization step ($=1$).
+    \begin{gather*}
+        \mathcal{Q} = 1 - \frac{2\cdot\texttt{quality}}{100}\\
+        q = \begin{cases} 0, & \mbox{if } |H_i| < -\mathcal{Q}\Delta_j \\\text{sign}(H_i)\left\lfloor \frac{|H_i| + \mathcal{Q}\Delta_j}{\Delta_j} \right\rfloor, & \mbox{if } |H_i| \geq -\mathcal{Q}\Delta_j \end{cases} 
+    \end{gather*}
+    This way all Haar coefficients within the variable sized death-zone will be set to 0 and remaining ones will shrink,
+    outputing lower entropy across the whole image. On decoder side FRIF will obtain used \texttt{quality} value from encoded
+    file header and lossily retrieve $H_i$ values
+    \begin{gather*}
+        H_i = \begin{cases} 0, & \mbox{if } q = 0 \\\text{sign}(q)(|q| - \mathcal{Q}\Delta_j)\Delta_j, & \mbox{if } q \neq 0 \end{cases} 
+    \end{gather*}
+
+    Quality of the quantized image is determined by the values of $Delta_j$ quantization steps which are arbitraly chosen and saved
+in the encoder source code. For lossless mode FRIF simply divides each layer of coefficients by
+value of $\forall_j\Delta_j = 1$. For lossy mode FRIF will obtain quantization steps for each level of Haar tree depth 
+similarly to JPEG2000[citation Book]: As first step it will compute the quantization step 
+\[
+    \Delta = 2^{8.5}\left(1 + \frac{8}{2^{11}}\right) \cdot \frac{50}{\texttt{quality}}
+\]
+and then to determine how thinly it should quantizate the $j$-th layer a $G$ vector is introduced,
+mapping the layer index to a value that will divide quantization
+step $\Delta_j$. With smaller quantization step a bigger number of discrete values are given to the codec,
+giving a better quality for the affected layer. $G$ vector is construced by assigning each layer $j$  with 
+a value of a divider function $d$ to obtain the size of quantization step
+\[
+    d(x) = \begin{cases} \Delta, & \mbox{if } x = 0 \\ 2^{10 - x}, & \mbox{if } x > 0 \end{cases}
+\]
+With $G$ set codec can finally for each layer $j$ derive $\Delta_j$ as 
+\[
+    \Delta_j = \frac{\Delta}{G[j]} \ \ j \in \{0,\,\ldots,\, 8\}
+\]
+
+Values of $G$ mapping were optimized by running FRIF through all datasets mentioned in Section~\ref{sec:4} maximizing the value of
+compression ratio multiplied by SSIM2 score of distorted images. To accommodate quantization to human visual perception FRIF 
+maintains separate function $G_Y$ and $G_{CrCb}$ for a harsher quantization for chromacity channels.
+Results indicated that only bottom-most layers should be quantized, as dividing upper layers greatly distorts the 
+image with little-to-none compression benefit. FRIF ultimately uses following $G$ vectors for lossy mode
+\begin{align*}
+    G_Y &= \langle d(0),\, d(0),\, d(0),\, d(3),\,d(3),\,d(4),\,d(4),\,d(5),\,d(5)\rangle\\
+    G_{CrCb} &= \langle d(0),\, d(0),\, d(0),\, d(3),\, d(4),\,d(5),\,d(6),\,d(7),\,d(8)\rangle
+\end{align*}
+\newpage
+\subsection{Plane traversal}
+After wavelet transform and optional quantization FRIF needs to sort each fractal level to obtain a traversal in such order
+that a fractal of postion $c$ will be always be after its left, up left and up right neighbor. This kind of ordering
+is crucial in prediction to allow both encoder and decoder to access the same neighbors when predicting a value 
+to decode/encode. In this section I will present an algorithm that for each level of fractal depth gives a proper
+ordering that complies to these requirements.
+
+With square grid this is a quite easy task, encoder can scan image from up to down, left to right, obtaining contexts as in Fig 8. 
+For a fractal grid made from $A^c_i$ sets this procedure is more complicated, as for each level the direction
+of each column/row changes and the shape of lattice produced in section 3.2 is inherently concave, producing
+gaps in traversal rows.
+\begin{figure}[ht]
+    \centering
+    % \input{figures/compression\_algorithm/traversal\_example\_lattice.tex}%     without .tex extension   
+    \includegraphics[width=\textwidth]{figures/compression_algorithm/top_traversal.png}
+    \caption{Traversal example on nine topmost $A^9$ sets. Sets of different
+    depth have unique starting point and unique direction of traversal, determined by $\mathcal{N}_i$ sets}
+\end{figure}
+
+Nonetheless, FRIF is able to sort each level of fractals enabling prediction from earlier neighbors by going through 
+following steps:
+
+For each level $i$, starting from $A^{i:=9}_c$ sets firstly algorithm needs to find the first element
+that will begin the traversal, and to do so it has to establish
+the direction of neighbors that will represent next row and next column change. From $\mathcal{N}_i$ set we chose
+the fourth neighbor $row =-z^i$ as the row single step and the second neighbor $col = -z_{i+1}$ as the column
+single step.
+
+Then to find the first column of first row FRIF, starting from the middle of the lattice 
+$curr = \frac{width}{2}+  \frac{height}{2}i$, extracts the $row$ from the 
+$curr$ as long as current position is within the lattice. With square boundary this would output the first
+row, however due to the concave nature of proposed lattice, scan must continue until the whole row is outside the 
+fractal lattice.
+
+After this procedure the current position of $curr$ will be located at the first row, and the algorithm 
+will start searching for the first column by extracting $col$ value while saving each position that 
+is inside the lattice as $last\_seen$ repeatedly until $curr$ it is not inside the 
+square described by the maximum and minimum points of the lattice. This condition makes the search for first 
+column immune to gaps in columns due to the concaveness; when $curr$ is at a gap then the condition of 
+described square is yet not violated, making the scan to traverse through those holes. After the iteration
+where $curr$ passes the boundary of described square, then the search stops and the first column first row position 
+is set $first = last\_seen$.
+Finally, the proper traversal of each row 
+can be formed by repeatedly saving current position (if it is within the lattice) and
+moving to next column by adding $col$ to $curr$. After the full row scan $row$ is added to $first$ moving the cursor
+to the next row. However, after row change there is a great chance the $curr$ will not point to the first column of 
+the new row. There are 2 cases: 
+\begin{enumerate}
+    \item If the new $first$ cursor is not within the lattice - algorithm will go forward with column position until
+        it approaches a position that is within the lattice or until the $first$ position violates the described square boundary.
+        The latter would cause the whole algorithm to finish, the new row is empty, ergo the whole traversal is finished. The former halting
+        condition leaves the $first$ cursor on the position that still may not be the first column of this row.
+
+    \item If the new $first$ cursor is within the lattice - there may be a position $first-col$ in lattice or a gap
+        behind $first$ that needs to be traversed through to verify if the new position is indeed the first of corresponding row. Algorithm
+        will go backward with column position until it violates the described square boundary, saving the last seen 
+        element of $lattice$ in $last\_seen$.    
+\end{enumerate}
+On the implementation side of this algorithm there are slight modification, due to the fact that the $A^2_c$ set has asymmetrical neighbor set, but for 
+the ease of description this detail was omitted in this thesis.
+
+For clarity, I will present the traversal on a simple example
+
+\begin{figure}
+\centering
+\subfloat[Reverse row direction until first non-lattice position]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/01_traversal}}
+\hfill
+\subfloat[Checking for empty row - failed due to column below being in lattice, last seen position is saved]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/02_traversal}}
+
+\subfloat[Checking for empty row - failed due to column below being in lattice, last seen position is saved]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/03_traversal}}
+\hfill
+\subfloat[Checking for empty row - success]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/04_traversal}}
+
+\subfloat[Setting current position to last seen position in lattice]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/05_traversal}}
+\hfill
+\subfloat[Reverse column direction until last lattice position]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/06_traversal}}
+
+\caption{Finding the first position step of the algorithm.}
+\end{figure}
+
+\begin{figure}
+\centering
+\subfloat[Scanning the first row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/07_traversal}}
+\hfill
+\subfloat[Moving cursor up one row, scanning the second row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/08_traversal}}
+
+\subfloat[Before scanning backstep until last lattice position]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/09_traversal}}
+\hfill
+\subfloat[Scan the third row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/10_traversal}}
+
+\subfloat[Scan the fourth row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/11_traversal}}
+\hfill
+\subfloat[Fronstep until position is in lattice]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/12_traversal}}
+
+\subfloat[Scan the fifth row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/13_traversal}}
+\hfill
+\subfloat[Scan the sixth row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/14_traversal}}
+
+\subfloat[Frontstep 3 times to position within the lattice and scan seventh row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/15_traversal}}
+\hfill
+\subfloat[Scan eighth and final row]
+{\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/16_traversal}}
+
+\caption{Scanning whole plane to obtain the traversal}
+\end{figure}
+
+This procedure is done on each level $i$ of $A^i$ sets starting from $i = 9$ and ending on $i = 1$. 
+Result is saved for further codec processing and to avoid calculating this order more than once.
+\newpage
 \subsection{Context modeling}
+With wavelet transform done encoder can begin to learn the probabilistic distributions of image,
+preparing the Laplace width and center predictions. FRIF exploits the hexagonal lattice
+of tame-twindragon fractals by, similarly as in Section 2.4, predicting values using immediate
+neighbours for first layer of $H$ values to encode. For subsequent layers FRIF leverages
+the information obtained in already decoded upper levels. This approach is often described
+as multi-level interleaving, or squeeze (as in JPEGXL[citation] or FUIF[citation]). 
 
-\subsection{Image format}
+\begin{figure}
+    \centering 
+    \subfloat[Top layer, yellow fractal has only same level contexts]
+    {\includegraphics[width=0.95\textwidth]{figures/compression_algorithm/01_prediction}}
 
+    \subfloat[Second layer, yellow fractal has both same level contexts and level above contexts]
+    {\includegraphics[width=0.95\textwidth]{figures/compression_algorithm/91_prediction}}
+
+
+    \subfloat[Third layer, scan is done in order determined by traversal from previous layer]
+    {\includegraphics[width=0.95\textwidth]{figures/compression_algorithm/03_prediction}}
+    \caption{Multidimensional context}
+    \label{fig:multictx} 
+\end{figure}
+
+
+Context modeling process begins at the topmost layer scanning the coefficients in 
+the predefined traversal from section 3.4. The goal is to predict the values from Laplace distribution
+and to predict the width of each distribution.
+First layer does not contain any information
+from layers before, so it has a special LOCO-like predictor, which is not optimized due to 
+little benefit to additional computation cost ratio. As seen in Figure~\ref{fig:multictx}
+the yellow fractal can predict its value from gray, previously processed, positions.
+
+Subsequent layers will leverage data from the layers before, making the contexts multidimensional. 
+After encoding top layers encoder can reuse their values for better prediction of values from 
+lower levels. Prediction will be formed as a linear combination of available neighbors in given context:
+\[
+    \varepsilon = \alpha_0A + \alpha_1B + \alpha_2C + \alpha_3D + \alpha_4E + \alpha_5F
+\]
+
+Prediction parameters are obtained as proposed in [citation] using the least squares linear regression:
+For each $H_i$ parameter we construct a vector of 6 neighbors $[A, B, C, D, E, F]$ and stack them into 
+a matrix $P^{N\times 6}$, where $N$ is total amount of $H_i$ Haar coefficients across whole lattice. Then
+the encoder can learn optimal value prediction parameters by calculating the regression.
+
+\[
+    \alpha = \text{argmin}_\alpha \|P\alpha-x \|^2_2 = (P P^T)^{-1}P^T x
+\]
+
+After calculating optimal $\alpha$-parameters for the image FRIF will save them and form a residual vector \[
+    r = x - \varepsilon
+\] 
+
+This step alone should output Laplace distributed data, however as mentioned in preliminaries it is also beneficial to
+assign values to mutliple different widths of distributions. This means that codec should also obtain prediction parameters 
+for distribution width values that output the best-fit width $b$ of Laplace distribution that residue value belong to.
+
+Those width prediction values will be determined by also 6 parameters $\beta$ relating to neighboring gradients 
+
+\[
+    b = \beta_0 + \beta_1|C-D| + \beta_2|A-B| + \beta_3|B-E| + \beta_4|A-F| + \beta_5|E-F|
+\]
+\newline
+Similarly to value prediction, width prediction is optimized with the least squares method. Matrix $W$ is constructed by
+stacking 6 values 
+\[
+   \left[1, |C-D|, |A-B|, |B-E|, |A-F|, |E-F|\right] 
+\]
+for each context present in image.
+\[
+    \beta = \text{argmin}_\beta \|W\beta-r \|^2_2 = (W W^T)^{-1}W^T r
+\]
+
+ANS encoder will use predefined set of distribution widths to initialize multiple encoders.
+Prediction parameters are saved in FRIF header and then used in decoder to retrieve widths and values in the process of each plane scan.
+
+\subsection{Prediction} 
+In previous step encoder obtained $\alpha$ and $\beta$ parameters to optimally predict values and widths of Laplace distributions. 
+Now the encoder needs to calculate the residuals and split them into $n$ buckets depending on the predicted width. To do so FRIF 
+scans each level according to traversal and for each Haar coefficient it will retrieve coefficient values of $A, B, C, D, E, F$ neighbors to 
+calculate $\varepsilon$ and $b$ widths with formulas from the previous step. Then the encoder will prepare $k := 9$ predefined buckets for quantized $b$
+for each recursion level $i \in \{0,1,2,3,4,5,6,7,8\}$ giving a total of 81 contexts per channel.
+\begin{align*}
+    g_0 &= \{0,\, 1,\, 2\}\\
+    g_1 &= \{3, 4\}\\
+    g_2 &= \{5,\, 6,\, 7\}\\
+    g_3 &= \{8,\, 9,\, 10,\, 11\}\\
+    g_4 &= \{12,\, 13,\, 14,\, 15\}\\
+    g_5 &= \{16,\, 17,\, 18,\, 19\}\\
+    g_6 &= \{20,\, 21,\, 22,\, 23,\, 24\}\\
+    g_7 &= \{25,\, 26,\, 27,\, 28,\, 29\}\\
+    g_8 &= \{30,\, \ldots\}\\
+\end{align*}
+
+For each value the $b$ width will determine in which $g_i$ should the histogram for $r = x -\varepsilon$ be saved. 
+Histograms are stored in the memory as 1024 sized arrays $freq_{g_i}$ of 4 byte unsigned integers. Residuals and coefficients can be of negative value,
+so a bijection map is introduced to interleave negative and positive values into $\mathbb{N}$
+\[
+    f(k) = \begin{cases} 2k, & \mbox{if } k\geq0 \\ -2k+1, & \mbox{if } k<0 \end{cases}
+\]
+
+Value $f(r)$ with width $b$ belongs to a histogram $g_i$ if $b \in g_i$ and 
+$freq_{g_i}[f(r)]$ is the frequency of $r$ in bucket. For each channel present in image the process is repeated. To avoid excessive FRIF header size
+all buckets are transferred as distribution parameters and arrays of outlier nonzero frequencies that otherwise would be set to 0 by Laplace distribution.
+This allows, with a little header overhead, to correctly encode and decode coefficients of each bucket and to retrieve encoded picture.
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=0.95\textwidth]{figures/compression_algorithm/single_bucket.png}
+    \end{center}
+    \caption{Example normalized Laplace bucket. Dashed line outlines the exact Laplace distribution. At $x=150$ there is an outlier,
+a point where Laplace distribution is equal to 0 even though symbol $x=150$ is present in the bucket. These cases
+are signaled as $\texttt{off\_distribution\_values}$ array.}
+    \label{fig:bucket}
+\end{figure}
+
+\newpage
+\subsection{ANS coding}
+
+Most compression savings are obtained by performing entropy encoding of the preprocessed input stream.
+FRIF uses rANS algorithm with one encoder per one bucket from previous section. 
+Encoding process begins at the top level saving each layer wavelet coefficients with their calculated $\varepsilon$ and $b$.
+The value $r = x - \varepsilon$ is put into encoder buffer with the bucket index $b$. Before flushing values into
+rANS encoder FRIF reverses the buffer to maintain the same order in decoder, as ANS is a stack-based algorithm.
+After reversing the buffer encoder will for each pair $(r, b)$ emplace $r$ to the $b$-th rANS encoder. Finally 
+encoded bytestream is saved and pushed to serialization stage along with Laplace distribution parameters required
+to decode the stream.
+
+Decoding process needs to obtain the right bucket and prediction value to retrieve coefficient value
+from encoded $r$ 
+\[
+    x =  r + \varepsilon 
+\]
+To retrieve encoded Haar coefficients decoder will scan 
+fractal layers top-down and for each fractal position it will decode the value $r$ with Laplace distribution determined
+by already decoded neighbours.
+Since the traversal is static for both encoder and decoder, then for each decoded $r$ value FRIF can use already decoded
+values $[A, B, C, D, E, F, G]$ as predictor neighbors.
+
+\begin{algorithm}[ht]
+    \small
+    \caption{Layer-wise coefficient decoding}
+    \begin{algorithmic}[1]
+        \Procedure{DecodeCoefficients}{encoded\_image, lattice}
+        \State traversal $\gets \,$ lattice.get\_traversal()
+        \State depth $\gets \,$ encoded\_image.depth 
+        \For{channel $\in\, [0,\,\ldots, \text{encoded\_image.num\_channels}]$}
+        \For{level $\in\, [0,\,\ldots, depth - 1]$}
+        \For{fractal\_pos $\in \text{traversal[level]}$}
+        \State fractal $\gets \,$ lattice[channel][fractal\_pos] 
+        \State fractal\_coef\_pos $\gets \,$ lattice.get\_coef\_pos[fractal\_pos] 
+        \State left\_child $\gets \,$ decode\_symbol(encoded\_image, fractal\_pos);
+        \State right\_child $\gets \,$ decode\_symbol(encoded\_image, fractal\_pos);
+        \State fractal.coefficients[$2*\text{fractal\_coef\_pos}$] $\gets \,$ left\_child
+        \State fractal.coefficients[$2*\text{fractal\_coef\_pos}+1$] $\gets \,$ right\_child
+        \EndFor
+        \EndFor
+        \EndFor
+        \EndProcedure
+    \end{algorithmic} 
+    \label{algo:entdecoder}
+\end{algorithm}
+In Algorithm~\ref{algo:entdecoder} line 9 and 10 decoder retrieves left and right child coefficients of current fractal
+position and inserts them immiediatly to coefficient array to their corresponding Haar tree positions. Next iterations
+in \texttt{decode\_symbol} are able to use them while forming neighbour sets. Implementation of \texttt{decode\_symbol} 
+is a standard rANS decode procedure with additional neighbour set resolve step and will be not shown in this paper.
+Detailed Rust implementation can be found in attached source code.
+\subsection{Serialization and FRIF image format}
+Serialization is the last step of encoder pipeline. Codec will efficiently serialize encoded bytestream and metadata required 
+for decoding as a series of bytes that can be stored on hard drive or transferred via network. 
+Valid FRIF starts with a header for all channel made from:
+\begin{itemize}
+    \item 4 bytes 0x42, 0x48, 0x45, 0x42 corresponding to "f", "r", "i", "f" ASCII symbols
+    \item 4 byte integer with width of encoded image
+    \item 4 byte integer with height of encoded image
+    \item 4 bytes metadata field, divided into multiple flags representing the configuration of the codec 
+\end{itemize}
+\begin{figure} [ht]
+    \begin{center}
+        \includegraphics[width=0.95\textwidth]{figures/compression_algorithm/01_frif_image_format}
+    \end{center}
+    \caption{Metadata field}\label{fig:metadata}
+\end{figure}
+
+Metadata is used as bit storage for configuration in a sequence showed in Figure~\ref{fig:metadata}. 
+Quality field corresponds to 4 possible pairs of bits
+\begin{itemize}
+    \item 11 - Lossless compression
+    \item 10 - High quality lossy compression 
+    \item 01 - Medium quality lossy compression 
+    \item 00 - Low quality lossy compression 
+\end{itemize}
+
+Variant stores the information which complex base was used to form fractals. Current implementation only supports
+tame-twindragon option.
+\begin{itemize}
+    \item 11 - Tame-twindragon
+    \item 10 - Twindragon
+    \item 01 \& 00 - reserved
+\end{itemize}
+\newpage
+Next 4 bytes store information about colorspace of encoded image with 
+\begin{itemize}
+    \item 00 - Grayscale8 (single channel with 8bit depth)
+    \item 01 - RGB24 (three channels with 24bit depth each)
+    \item 10 \& 11 - reserved
+\end{itemize}
+
+Each channel is divided into 3 sections using 2 byte marks in following order
+\begin{itemize}
+    \item \textbf{PRD} 0xFF 0xBB - Learned prediction parameters
+    \item \textbf{EHD} 0xFF 0xB2 - Entropy header data
+    \item \textbf{DAT} 0xFF 0xB4 - Compressed bits of image
+\end{itemize}
+Channel data is separated by \textbf{EOC} 0xFF 0xB8 (End Of Channel) mark.
+After all channels there is one last 2 byte mark \textbf{EOI} 0xFF 0xEF (End of Image)
+signaling the end of file.
+\subsubsection{PRD section}
+Prediction parameters are encoded as arrays of six $4$ byte numbers for each one of 
+nine levels of fractal recursion. These values are signaled for both 
+value predictors $\alpha$ and width prediction $\beta$ as a $6 \cdot 4 \cdot 9 = 216$ bytes chunks.
+\begin{align*}
+    i&\in \{0,\,1,\,2,\,3,\,4,\,5,\,6,\,7,\,8\}\\
+    \alpha^i &= \{\alpha^i_0,\, \alpha^i_1,\, \alpha^i_2,\, \alpha^i_3,\, \alpha^i_4,\, \alpha^i_5\}\\
+    \beta^i &= \{\beta^i_0,\, \beta^i_1,\, \beta^i_2,\, \beta^i_3,\, \beta^i_4,\, \beta^i_5\}
+\end{align*}
+\subsubsection{EHD section}
+Entropy header data is stored with multiple $\textbf{EHD}$ marks for each
+context described in section 3.7 with following fields: 
+\begin{itemize}
+    \item Maximum frequency bits - $4$ bytes
+    \item Length $k$ of the off distribution values encoded - $4$ bytes
+    \item Array of $k$ values representing the symbols that Laplace distribution 
+        flattened to 0 value - $k\cdot4$ bytes
+\end{itemize}
+ 
+\subsubsection{DAT section}
+The largest section of channel data is the encoded image signaled with
+\begin{itemize}
+    \item Length $n$ of compressed bytestream - $8$ bytes 
+    \item Compressed bytestream - $n$ bytes 
+\end{itemize}
+
+\subsubsection{Memory footprint}
+Crucial objective of designed format is the amount data that is needed to transfer along the entropy compressed bytes. 
+For image with 3 RGB channels header overhead sums to
+\begin{align*}
+    +\, &16&=\,&4 + 4 + 4 + 4 &-\,&\text{Header} \\
+    +\, &648&=\,&3\cdot(6\cdot4)\cdot 9 &-\,&\text{Value prediction}\\ 
+    +\, &648&=\,&3\cdot(6\cdot4)\cdot 9 &-\,&\text{Width prediction}\\  
+    +\, &2160 + 1080k&=\,&3\cdot90\cdot(4 + 4 + 4k_i) &-\,&\text{Prediction context data}\\
+    +\, &24+ 3n&=\,&3\cdot(8 + n) &-\,&\text{Bytestream length and data}\\
+    =\,& 3469 + 1080k + 3n&&&
+\end{align*}
+
+A room for improvement lays in $1080k$ component, which would be unnecessary if the predicted buckets
+contained only information about symbols that are present in Laplace distribution of given width. Nonetheless
+for tested images header size did not exceed size of 10kB, which was in the limits of acceptance for the scope
+of this thesis.

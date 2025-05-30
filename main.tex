@@ -6,6 +6,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{microtype}
+\usepackage{standalone}
 \usepackage[sorting=none,backend=biber]{biblatex}
 \usepackage[inline]{enumitem}
 \usepackage{booktabs}
@@ -16,12 +17,19 @@
 \usepackage{amsfonts}
 \usepackage{mathrsfs}
 \usepackage{tikz}
+\usepackage{tikz-cd}
+\usepackage{quiver}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 % \usepackage{changes}
 \usepackage[hidelinks]{hyperref}
 \usepackage{xcolor}
 \usepackage[ampersand]{easylist}
 \usepackage{placeins}
+\usepackage{scalefnt}
 
+\usetikzlibrary{positioning,shapes.misc, calc, graphs, graphdrawing}
+\usegdlibrary{trees}
 \brokenpenalty=1000
 \clubpenalty=1000
 \widowpenalty=1000
@@ -61,5 +69,5 @@
     \input{chapters/40_experiments.tex}
     \input{chapters/50_conclusions.tex}
    
-    \printbibliography[heading=bibintoc]
+    % \printbibliography[heading=bibintoc]
 \end{document}
