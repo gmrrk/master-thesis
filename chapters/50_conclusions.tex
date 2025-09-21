@@ -1,6 +1,22 @@
-\newpage
-\section{Conclusions}
+\section{Summary}
 
-\subsection{Comparison to other codecs}
-\subsection{Possible enhancements}
-\subsection{Ending remarks}
+Proposed compression algorithm shows promise in the lossless benchmarks, as on kodak dataset FRIF achieved overall better
+compression rates than ubiquitous PNG format. Novel context modeling and prediction greatly enhanced the ability of the compressor to find spatial redundancies
+and lower the amount of bits required to signal one pixel. This advantage quickly diminishes versus JPEG2000, a similar wavelet compressor, that
+tacross all lossless benchmarks performed better. 
+For lossy mode experiments showed that proposed quantization pattern produces pixelated versions of the original image, damaging the quality observed
+via SSIM2 metric.
+
+\subsection{Room for improvement}
+There is a noticable room for improvement for presented codec and areas worth exploring to enhance both lossless and lossy compression ratios. 
+One of them can be the choice of used wavelet in DWT, as Haar wavelet is the simplest wavelet that fitted the recursive tame-twindragon fractal nature. 
+A wavelet more suited for image compression could benefit lossless mode, bringing FRIF closer to JPEG2000 performance.
+The quantization scheme could potentially be enhanced by an approach similar to JPEGXL Modular mode with a tendency term, that limits the pixelation of dead-zoned
+parameters. For a small compression ratio boost FRIF with better width prediction for context modelling could abandon saving \texttt{off\_distribution\_values} array as the image header.
+
+\subsection{Closing remarks}
+This thesis presented FRIF, a new image compression codec based on tame-twindragon fractal grid decomposition and discrete wavelet transform
+with novel context modeling scheme. Although the lossy encoding mode requires additional refinement, FRIF gives a decent backbone of a codec that
+can losslessly compress images with on-pair performance to PNG. Proposed solutions in grid selection, context modeling and prediction
+with improvements mentioned in the thesis could yield even better results for both lossy and lossless compression, leaving space for further research. 
+Presented compression scheme and implementation details can be found on an open-source repository hosted on GitHub under following URL: \url{https://github.com/pagmerek/frave}

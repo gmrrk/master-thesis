@@ -4,7 +4,7 @@
 \section{FRIF Compression method}
 
 
-FRIF is build on the idea of decomposing an image into a lattice of complex-based
+FRIF is built on the idea of decomposing an image into a lattice of complex-based
 fractals, performing Haar wavelet transform and leveraging spatial dependencies for context modelling.
 
 \begin{figure}[ht]
@@ -39,32 +39,47 @@ fractals, performing Haar wavelet transform and leveraging spatial dependencies 
 on the left with decoder steps on the right.}
 \end{figure}
 Each of described transforms is applied separately for each channel, which could be 
-parallelized on multicore systems. Almost all steps are symmetrical for coding and decoding,
-decoder does not perform context modelling since all required information are signaled in image header
+parallelized on multicore systems. Almost all steps are symmetrical for coding and decoding (as
+decoder does not perform context modelling since all required information are signaled in image header)
 
-In following subsections I will step by step present all steps required to properly encode and
+In following subsections I will step by step present all stages required to properly encode and
 decode FRIF image. This section will serve as a full format specification with proposed byte arrangement
 for $.frif$ files in the Serialization section.
 \subsection{Color transform}
+\begin{figure}
+    \begin{tabular}{ccc}
+& Original image &  \\[6pt]
+&  \includegraphics[width=0.30\textwidth]{figures/compression_algorithm/original_color.png} &  \\
+& YCbCr &  \\[6pt]
+\includegraphics[width=0.30\textwidth]{figures/compression_algorithm/grayYUV.png} & \includegraphics[width=0.30\textwidth]{figures/compression_algorithm/CbYUV.png} &  \includegraphics[width=0.30\textwidth]{figures/compression_algorithm/CrYUV.png} \\
+(a) Y & (b) Cb & (c) Cr \\[6pt]
+      & RCT &  \\[6pt]
+\includegraphics[width=0.30\textwidth]{figures/compression_algorithm/grayRCT.png} & \includegraphics[width=0.30\textwidth]{figures/compression_algorithm/CbRCT.png} &  \includegraphics[width=0.30\textwidth]{figures/compression_algorithm/CrRCT.png} \\
+(d) Y & (e) Cb & (f) Cr \\[6pt]
+\end{tabular}
+\caption{YCrCb and RCT color transform}\label{fig:rctycrcb}
+\end{figure}
 After receiving a raw image first step is to transform its color space to one that
 decorelates the channel data. FRIF supports Grayscale images (single channel, 8 bit per pixel)
 or RGB True Color (3 channels, 8 bit per channel 24 bits per pixel).
 
 Color transform for grayscale images is redundant, codec will simply pass unmodified pixel values to the next stage.
 RGB images will be transformed into YCrCb colorspace in lossy mode and into RCT colorspace in lossless mode as described in section 2.3.
-There is a space left for optimization with color transform described by J. Duda in [citation].
+Transformation is showcased in Figure~\ref{fig:rctycrcb}.
+There is a space left for optimization with color transform described by J. Duda in \cite{duda2020upsampling}.
+
 
 \newpage
 
 \subsection{Fractal decomposition}
 
-On the second step FRIF will divide the image into lattice of complex-based fractals. Lattice is stored as a dictionary data structure
+In the second stage FRIF will divide the image into lattice of complex-based fractals. Lattice is stored as a dictionary data structure $lattice$
 for fast coordinate lookup.
 
 \[
-    F: \mathbb{C}\ni c \rightarrow A^9_c
+    lattice: \mathbb{C}\ni c \rightarrow A^9_c
 \] 
-where $A^9_c$ are wavelet coefficients that will describe image contained in fractal of center in $c$.
+where $A^9_c$ are the coordinates of fractal points contained in fractal of center in $c$.
 Depth of $A_i$ set described in section 2.1 is arbitrary chosen as $i := 9$, which covers $2^9$ (512) pixel values. 
 \begin{figure}[ht]
     \centering
@@ -112,11 +127,11 @@ with rectangle, but such fractals will be pruned in following stages.
 \begin{figure}[ht]
     \centering
     \includegraphics[scale=0.45]{figures/compression_algorithm/fracdecomp.png}
-    \caption{Example decomposition of a rectangle into fractals. Red cross marks the $A^9_0$ set}
+    \caption{Example decomposition of a rectangle into fractals. Red cross marks the initial central set}
     \label{fig:fracdecomp} 
 \end{figure}
 
-For encoding image pixel values each fractal in lattice also contains a map of actual image positions for each set. 
+To encode image pixel values each fractal in lattice contains a map of actual image positions for each set. 
 Recursively $A^i_c$ can be expressed as:
 \begin{align}
     &A^i_c = A^{i-1}_c \cup A^{i-1}_{c + z^i}\\
@@ -169,15 +184,15 @@ Consequentially $C_{2p}$ and $C_{2p+1}$ corresponds to translations calculated f
         \draw (-0.5,-0.5) -- (-0.5,0.5) -- (-0.5,1.5) -- (0.5,1.5) -- (0.5,0.5) -- (0.5,-0.5) -- (-0.5,-0.5) -- (-0.5,0.5) -- cycle ;
     \end{tikzpicture}
     \hfill
-    \caption{Recursive decomposition of $A^9_0$, for presentation only half of each split is shown. Last layer value is made up from 2 pixels}
+    \caption{Recursive decomposition of $A^9_c$, for presentation only half of each split is shown. Last layer value is made up from 2 pixels}
 \end{figure}
 \newpage
 
 \subsection{Wavelet transform}
-After dividing an image to a lattice of fractals FRIF follows with wavelet transform. For each $A_c^9$ we would like to obtain
+After dividing an image to a lattice of fractals FRIF follows with a wavelet transform. For each $A_c^9$ it will calculate
 a Haar Tree with $512$ coefficients and final sum as a result. Transform begins at the lowest layer of $A_c^9$ decomposition, which
-consists of $258$ sets $A^1_{c_j}$. Each of them corresponds to area of 2 pixels from which the transform will obtain first Haar tree
-layer of coefficients. Let $x$ = $(x_0\ldots x_n)$ - raw image and $H$ - Haar tree of depth 9. Then we can symbolically write:
+consists of $256$ sets $A^1_{c_j}$. Each of them corresponds to area of 2 pixels from which the transform will obtain first Haar tree
+layer of coefficients. Let $x$ = $(x_0\ldots x_n)$ - raw image and $H$ - Haar tree of depth 9. Then Haar DCT can be symbolically written as:
 \begin{figure}[ht]
     \centering
     \begin{tikzpicture}[scale=0.95, transform shape]
@@ -210,22 +225,21 @@ layer of coefficients. Let $x$ = $(x_0\ldots x_n)$ - raw image and $H$ - Haar tr
     \caption{First two layers wavelet transform, the differences are saved in Haar tree and the sum is passed upwards}
 \end{figure}
 
-Continuing this calculation forward we will obtain final high-pass filter coefficient for whole $A^9_c$ fractal in $H_1$, and we will 
-save the final sum $g_1$ in $H_0$. This process is repeated for all $A^9_c$ in fractal lattice.
+Continuing this calculation forward will result in final high-pass filter coefficient for whole $A^9_c$ fractal in $H_1$,
+and a final sum $g_1$ in $H_0$. This process is repeated for all $A^9_c$ in fractal lattice.
 
-This transform is implemented with a very essential detail. As seen in Figure~\ref{fig:fracdecomp} there is a substantial amount
+Wavelet transform is implemented with a very essential detail. As seen in Figure~\ref{fig:fracdecomp} there is a substantial amount
 of area around the boundary that does not correspond to pixel values in image. To avoid saving coefficients for such areas 
-we will cut Haar tree branches that does not contain information about actual image locations. It is done via simple check on the
+Haar tree branches that does not contain information about actual image locations will be cut. It is done via simple check on the
 last layer: when transform step decomposes $A^1_c$ into $\{A^0_c,\, A^0_{c_d+z}\}$ it firstly verifies if $c_d$ and $c+z$ lays in the image.
-If they do, then we proceed with calculation, if one of them is outside we replace it by $0$ value. However, if both $c$ and $c_d$ are
-outside the image then we mark the Haar tree node as $null$ and pass $g_i$ value as $null$ as well. Then for higher layers we repeat this procedure 
-checking if $g_{2i}$ and $g_{2i+1}$ are not null et cetera. This way we can cut entire Haar wavelet tree branches on encoding step and 
-the decoder can derive information about which branches were cut by repeating the same fractal decomposition that is done in encoder.
+If they do, then the calculation proceeds, if one of them is outside, it is replaced by $0$ value. However, if both $c$ and $c_d$ are
+outside the image, then Haar tree node is marked as $null$ and passed $g_i$ value is set to $null$ as well. 
+Then for higher layers this procedure is repeated
+checking if $g_{2i}$ and $g_{2i+1}$ are not null et cetera. This way entire Haar wavelet tree branches can be cut on encoding step and 
+the decoder can derive information about which branches were cut by repeating the same fractal decomposition that is done in the encoder.
 If the top sum value in wavelet tree $H_0$ is $null$ then it means that a whole $A^9_c$ set has an empty
-intersection with image. Such cases are entirely removed from the lattice.
+intersection with the image. Such cases are entirely removed from the lattice.
 This effectively allows FRIF to not encode any additional coefficients besides those that are required to perform inverse wavelet transform.
-
-
 As an algorithm this process can be described as follows:
 
 \begin{algorithm}[ht]
@@ -266,17 +280,20 @@ As an algorithm this process can be described as follows:
         \State \textbf{return} H
         \EndProcedure
 
-    \end{algorithmic} 
-    \label{algo:wavelettransform}
+    \end{algorithmic}\label{algo:wavelettransform}
 \end{algorithm}
 
+Decoder will retrieve original channel values by calculating $g$ array similarly to Algorithm~\ref{algo:wavelettransform} but with
+reverse wavelet transform. After decoding all low-pass filter nodes, pixel values can be losslessy obtained by a final pass of 
+reverse wavelet transform
+\newpage
 \subsection{Quantization}
 
-    Images often contain a good amount of visual information that is not percieved by human eye and can be 
+    Images often contain a good amount of visual information that is not perceived by human eye and can be 
     removed without affecting the overall quality. Lossy codecs make use of this property by limiting 
     the set of input values to a discrete one to minimize the size of encoded image, a process that in information theory is called quantization.
     Codecs that use quantization are not lossless, because after quantization the image will no longer 
-    be mathematically the same as the input image, as some of the information will be lost. 
+    be mathematically the same as the input image, some of the information will be lost. 
     
     \begin{figure}[ht]
         \begin{center}
@@ -312,9 +329,9 @@ As an algorithm this process can be described as follows:
 
     Dead-zone scalar quantizer divides value space with a quantization step $\Delta$ to a set of intervals which 
     are mapped to a single value $q$. 
-    FRIF offers an optional quantization step, based on dead-zone quantizer that for each layer will divide the Haar coefficient
+    FRIF offers an optional quantization stage, based on dead-zone quantizer that for each layer will divide the Haar coefficient
     values of layer $A_c^j$ by quantization step $\Delta_j$. The size of dead-zone can be adjusted by the user with encoder 
-    \texttt{quality} parameter, which as described in [citation] will adjust the size of dead-zone without affecting widths of remaining intervals. 
+    \texttt{quality} parameter, which as described in \cite{marcellin2002jpeg2000quan} will adjust the size of dead-zone without affecting widths of remaining intervals. 
     Quality parameter is given as input to the encoder as an integer between $1$ and $100$, where $1$ is for widest quantization step and 
     $100$ is for lossless quantization step ($=1$).
     \begin{gather*}
@@ -328,34 +345,36 @@ As an algorithm this process can be described as follows:
         H_i = \begin{cases} 0, & \mbox{if } q = 0 \\\text{sign}(q)(|q| - \mathcal{Q}\Delta_j)\Delta_j, & \mbox{if } q \neq 0 \end{cases} 
     \end{gather*}
 
-    Quality of the quantized image is determined by the values of $Delta_j$ quantization steps which are arbitraly chosen and saved
+    Quality of the quantized image is determined by the values of $\Delta_j$ quantization steps which are arbitrary chosen and saved
 in the encoder source code. For lossless mode FRIF simply divides each layer of coefficients by
 value of $\forall_j\Delta_j = 1$. For lossy mode FRIF will obtain quantization steps for each level of Haar tree depth 
-similarly to JPEG2000[citation Book]: As first step it will compute the quantization step 
+similarly to JPEG2000 \cite{marcellin2002jpeg2000quan}. Firstly computing the global quantization step 
 \[
     \Delta = 2^{8.5}\left(1 + \frac{8}{2^{11}}\right) \cdot \frac{50}{\texttt{quality}}
 \]
 and then to determine how thinly it should quantizate the $j$-th layer a $G$ vector is introduced,
 mapping the layer index to a value that will divide quantization
 step $\Delta_j$. With smaller quantization step a bigger number of discrete values are given to the codec,
-giving a better quality for the affected layer. $G$ vector is construced by assigning each layer $j$  with 
-a value of a divider function $d$ to obtain the size of quantization step
+giving a better quality for the affected layer. $G$ vector is constructed by assigning each layer $j$  with 
+a value of a divider function $d$ to obtain the size of quantization step. To disable a certain layer quantization $x=0$ can be passed 
+to divider function resulting in $\Delta_j$ set to $1$.
 \[
     d(x) = \begin{cases} \Delta, & \mbox{if } x = 0 \\ 2^{10 - x}, & \mbox{if } x > 0 \end{cases}
 \]
-With $G$ set codec can finally for each layer $j$ derive $\Delta_j$ as 
+Divider function formula is constructed to control the scale of quantization step. Greater passed $x$ value
+will result with larger $\Delta$ quantization step. With $G$ vector codec can finally for each layer $j$ derive $\Delta_j$ as 
 \[
     \Delta_j = \frac{\Delta}{G[j]} \ \ j \in \{0,\,\ldots,\, 8\}
 \]
 
-Values of $G$ mapping were optimized by running FRIF through all datasets mentioned in Section~\ref{sec:4} maximizing the value of
+Values of $G$ mapping were optimized by running FRIF through all datasets used in this thesis maximizing the value of
 compression ratio multiplied by SSIM2 score of distorted images. To accommodate quantization to human visual perception FRIF 
 maintains separate function $G_Y$ and $G_{CrCb}$ for a harsher quantization for chromacity channels.
 Results indicated that only bottom-most layers should be quantized, as dividing upper layers greatly distorts the 
-image with little-to-none compression benefit. FRIF ultimately uses following $G$ vectors for lossy mode
+image with little-to-none compression benefit. FRIF ultimately uses following $G$ vectors for lossy mode:
 \begin{align*}
     G_Y &= \langle d(0),\, d(0),\, d(0),\, d(3),\,d(3),\,d(4),\,d(4),\,d(5),\,d(5)\rangle\\
-    G_{CrCb} &= \langle d(0),\, d(0),\, d(0),\, d(3),\, d(4),\,d(5),\,d(6),\,d(7),\,d(8)\rangle
+    G_{CbCr} &= \langle d(0),\, d(0),\, d(0),\, d(3),\, d(4),\,d(5),\,d(6),\,d(7),\,d(8)\rangle
 \end{align*}
 \newpage
 \subsection{Plane traversal}
@@ -380,11 +399,11 @@ gaps in traversal rows.
 Nonetheless, FRIF is able to sort each level of fractals enabling prediction from earlier neighbors by going through 
 following steps:
 
-For each level $i$, starting from $A^{i:=9}_c$ sets firstly algorithm needs to find the first element
+For each level $i$, starting from $A^{i:=9}_c$ algorithm needs to find the first element
 that will begin the traversal, and to do so it has to establish
-the direction of neighbors that will represent next row and next column change. From $\mathcal{N}_i$ set we chose
-the fourth neighbor $row =-z^i$ as the row single step and the second neighbor $col = -z_{i+1}$ as the column
-single step.
+the direction of neighbors that will represent next row and next column change. Row single step direction
+is set as fourth neighbor from $row=\mathcal{N}_i[3]=-z^i$  and the second neighbor $col =\mathcal{N}_i[1] =-z_{i+1}$ as the column
+single step direction.
 
 Then to find the first column of first row FRIF, starting from the middle of the lattice 
 $curr = \frac{width}{2}+  \frac{height}{2}i$, extracts the $row$ from the 
@@ -397,9 +416,9 @@ will start searching for the first column by extracting $col$ value while saving
 is inside the lattice as $last\_seen$ repeatedly until $curr$ it is not inside the 
 square described by the maximum and minimum points of the lattice. This condition makes the search for first 
 column immune to gaps in columns due to the concaveness; when $curr$ is at a gap then the condition of 
-described square is yet not violated, making the scan to traverse through those holes. After the iteration
-where $curr$ passes the boundary of described square, then the search stops and the first column first row position 
-is set $first = last\_seen$.
+described square is yet not violated, making the scan to traverse through those holes.
+Search stops after the iteration, where $curr$ passes the boundary of described square, and the first column first row position 
+is set to the last seen value within the lattice $first = last\_seen$.
 Finally, the proper traversal of each row 
 can be formed by repeatedly saving current position (if it is within the lattice) and
 moving to next column by adding $col$ to $curr$. After the full row scan $row$ is added to $first$ moving the cursor
@@ -418,8 +437,6 @@ the new row. There are 2 cases:
 \end{enumerate}
 On the implementation side of this algorithm there are slight modification, due to the fact that the $A^2_c$ set has asymmetrical neighbor set, but for 
 the ease of description this detail was omitted in this thesis.
-
-For clarity, I will present the traversal on a simple example
 
 \begin{figure}
 \centering
@@ -441,7 +458,7 @@ For clarity, I will present the traversal on a simple example
 \subfloat[Reverse column direction until last lattice position]
 {\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/06_traversal}}
 
-\caption{Finding the first position step of the algorithm.}
+\caption{Finding the first position step of the algorithm.}\label{fig:traversalbegin}
 \end{figure}
 
 \begin{figure}
@@ -476,19 +493,20 @@ For clarity, I will present the traversal on a simple example
 \subfloat[Scan eighth and final row]
 {\includegraphics[width=0.5\textwidth]{figures/compression_algorithm/16_traversal}}
 
-\caption{Scanning whole plane to obtain the traversal}
+\caption{Scanning whole plane to obtain the traversal}\label{fig:traversalscan}
 \end{figure}
 
 This procedure is done on each level $i$ of $A^i$ sets starting from $i = 9$ and ending on $i = 1$. 
-Result is saved for further codec processing and to avoid calculating this order more than once.
+Result is saved for further codec processing and to avoid calculating this order more than once. An example 
+pass of plane traversal algorith on third layer can be seen in Figure~\ref{fig:traversalbegin} and Figure~\ref{fig:traversalscan}
 \newpage
 \subsection{Context modeling}
-With wavelet transform done encoder can begin to learn the probabilistic distributions of image,
+With wavelet transform done encoder can begin to learn the probabilistic distributions of the input image,
 preparing the Laplace width and center predictions. FRIF exploits the hexagonal lattice
 of tame-twindragon fractals by, similarly as in Section 2.4, predicting values using immediate
 neighbours for first layer of $H$ values to encode. For subsequent layers FRIF leverages
 the information obtained in already decoded upper levels. This approach is often described
-as multi-level interleaving, or squeeze (as in JPEGXL[citation] or FUIF[citation]). 
+as multi-level interleaving, or squeeze (as in JPEGXL or FUIF). 
 
 \begin{figure}
     \centering 
@@ -514,17 +532,17 @@ from layers before, so it has a special LOCO-like predictor, which is not optimi
 little benefit to additional computation cost ratio. As seen in Figure~\ref{fig:multictx}
 the yellow fractal can predict its value from gray, previously processed, positions.
 
-Subsequent layers will leverage data from the layers before, making the contexts multidimensional. 
+Subsequent layers will leverage data from the layers above, making the contexts multidimensional. 
 After encoding top layers encoder can reuse their values for better prediction of values from 
-lower levels. Prediction will be formed as a linear combination of available neighbors in given context:
+the layers below. Prediction will be formed as a linear combination of available neighbors in given context:
 \[
-    \varepsilon = \alpha_0A + \alpha_1B + \alpha_2C + \alpha_3D + \alpha_4E + \alpha_5F
+    \varepsilon = \alpha_0A + \alpha_1B + \alpha_2C + \alpha_3D + \alpha_4E + \alpha_5F + \alpha_6G
 \]
 
-Prediction parameters are obtained as proposed in [citation] using the least squares linear regression:
-For each $H_i$ parameter we construct a vector of 6 neighbors $[A, B, C, D, E, F]$ and stack them into 
-a matrix $P^{N\times 6}$, where $N$ is total amount of $H_i$ Haar coefficients across whole lattice. Then
-the encoder can learn optimal value prediction parameters by calculating the regression.
+Prediction parameters are obtained as proposed in \cite{duda2020upsampling} using the least squares linear regression:
+For each $H_i$ parameter FRIF constructs a vector of 7 neighbors $[A, B, C, D, E, F, G]$ and stack them into 
+a matrix $P^{N\times 7}$, where $N$ is total amount of $H_i$ Haar coefficients across whole lattice. Then
+the encoder can learn optimal value prediction parameters by calculating the leasst squares regression:
 
 \[
     \alpha = \text{argmin}_\alpha \|P\alpha-x \|^2_2 = (P P^T)^{-1}P^T x
@@ -534,20 +552,20 @@ After calculating optimal $\alpha$-parameters for the image FRIF will save them 
     r = x - \varepsilon
 \] 
 
-This step alone should output Laplace distributed data, however as mentioned in preliminaries it is also beneficial to
-assign values to mutliple different widths of distributions. This means that codec should also obtain prediction parameters 
+This step alone should output Laplace distributed data, however as mentioned in preliminaries it is beneficial to
+assign values to multiple different widths of distributions. This means that codec should obtain prediction parameters 
 for distribution width values that output the best-fit width $b$ of Laplace distribution that residue value belong to.
 
-Those width prediction values will be determined by also 6 parameters $\beta$ relating to neighboring gradients 
+Those width prediction values will be determined by 7 parameters $\beta$ relating to neighboring gradients 
 
 \[
-    b = \beta_0 + \beta_1|C-D| + \beta_2|A-B| + \beta_3|B-E| + \beta_4|A-F| + \beta_5|E-F|
+    b = \beta_0 + \beta_1|C-D| + \beta_2|A-B| + \beta_3|B-E| + \beta_4|A-F| + \beta_5|E-F| + \beta_6|F - G|
 \]
 \newline
 Similarly to value prediction, width prediction is optimized with the least squares method. Matrix $W$ is constructed by
-stacking 6 values 
+stacking 7 values 
 \[
-   \left[1, |C-D|, |A-B|, |B-E|, |A-F|, |E-F|\right] 
+   \left[1, |C-D|, |A-B|, |B-E|, |A-F|, |E-F|, |F-G|\right] 
 \]
 for each context present in image.
 \[
@@ -560,19 +578,20 @@ Prediction parameters are saved in FRIF header and then used in decoder to retri
 \subsection{Prediction} 
 In previous step encoder obtained $\alpha$ and $\beta$ parameters to optimally predict values and widths of Laplace distributions. 
 Now the encoder needs to calculate the residuals and split them into $n$ buckets depending on the predicted width. To do so FRIF 
-scans each level according to traversal and for each Haar coefficient it will retrieve coefficient values of $A, B, C, D, E, F$ neighbors to 
-calculate $\varepsilon$ and $b$ widths with formulas from the previous step. Then the encoder will prepare $k := 9$ predefined buckets for quantized $b$
-for each recursion level $i \in \{0,1,2,3,4,5,6,7,8\}$ giving a total of 81 contexts per channel.
+scans each level according to traversal and for each Haar coefficient it will retrieve coefficient values of $A, B, C, D, E, F, G$ neighbors to 
+calculate $\varepsilon$ and $b$ widths with formulas from the previous step. Then the encoder will prepare $k := 10$ predefined buckets for quantized $b$ widths
+for each recursion level $i \in \{0,1,2,3,4,5,6,7,8\}$ giving a total of 90 contexts per channel.
 \begin{align*}
     g_0 &= \{0,\, 1,\, 2\}\\
     g_1 &= \{3, 4\}\\
-    g_2 &= \{5,\, 6,\, 7\}\\
-    g_3 &= \{8,\, 9,\, 10,\, 11\}\\
-    g_4 &= \{12,\, 13,\, 14,\, 15\}\\
-    g_5 &= \{16,\, 17,\, 18,\, 19\}\\
-    g_6 &= \{20,\, 21,\, 22,\, 23,\, 24\}\\
-    g_7 &= \{25,\, 26,\, 27,\, 28,\, 29\}\\
-    g_8 &= \{30,\, \ldots\}\\
+    g_2 &= \{5\}\\
+    g_3 &= \{6,\, 7\}\\
+    g_4 &= \{8,\, 9,\, 10,\, 11\}\\
+    g_5 &= \{12,\, 13,\, 14,\, 15\}\\
+    g_6 &= \{16,\, 17,\, 18,\, 19\}\\
+    g_7 &= \{20,\, 21,\, 22,\, 23,\, 24\}\\
+    g_8 &= \{25,\, 26,\, 27,\, 28,\, 29\}\\
+    g_9 &= \{30,\, \ldots\}\\
 \end{align*}
 
 For each value the $b$ width will determine in which $g_i$ should the histogram for $r = x -\varepsilon$ be saved. 
@@ -583,8 +602,9 @@ so a bijection map is introduced to interleave negative and positive values into
 \]
 
 Value $f(r)$ with width $b$ belongs to a histogram $g_i$ if $b \in g_i$ and 
-$freq_{g_i}[f(r)]$ is the frequency of $r$ in bucket. For each channel present in image the process is repeated. To avoid excessive FRIF header size
-all buckets are transferred as distribution parameters and arrays of outlier nonzero frequencies that otherwise would be set to 0 by Laplace distribution.
+$freq_{g_i}[f(r)]$ is the frequency of $r$ in bucket $g_i$. For each channel present in image the process is repeated. FRIF cannot
+directly save probability histograms as it would destroy the purpose compression with $1024\cdot90\cdot3 = 276kB$ memory footprint for the header.
+All bucket data is transferred as Laplace distribution parameters derived from average predicted width in each bucket and \texttt{off\_distribution\_values} arrays of outlier nonzero frequencies that otherwise would be set to 0 by Laplace distribution.
 This allows, with a little header overhead, to correctly encode and decode coefficients of each bucket and to retrieve encoded picture.
 \begin{figure}
     \begin{center}
@@ -596,15 +616,24 @@ are signaled as $\texttt{off\_distribution\_values}$ array.}
     \label{fig:bucket}
 \end{figure}
 
+
+\begin{figure}
+    \begin{center}
+        \includegraphics[width=\textwidth]{figures/compression_algorithm/buckets.png}
+    \end{center}
+    \caption{Prediction residuals across 90 buckets for luminance channel. Each row $i$ column $j$ position reflects the histogram of $g$ bucket on layer $j$.
+    Quantity in each bucket is normalized to be within $(0,\,1)$ interval}\label{fig:buckets}
+\end{figure}
+
+
 \newpage
 \subsection{ANS coding}
-
-Most compression savings are obtained by performing entropy encoding of the preprocessed input stream.
+The biggest compression savings are obtained by performing entropy encoding of the preprocessed input stream.
 FRIF uses rANS algorithm with one encoder per one bucket from previous section. 
 Encoding process begins at the top level saving each layer wavelet coefficients with their calculated $\varepsilon$ and $b$.
 The value $r = x - \varepsilon$ is put into encoder buffer with the bucket index $b$. Before flushing values into
 rANS encoder FRIF reverses the buffer to maintain the same order in decoder, as ANS is a stack-based algorithm.
-After reversing the buffer encoder will for each pair $(r, b)$ emplace $r$ to the $b$-th rANS encoder. Finally 
+After reversing the buffer encoder will for each pair $(r, b)$ emplace $r$ to the $b$-th rANS encoder. Finally, 
 encoded bytestream is saved and pushed to serialization stage along with Laplace distribution parameters required
 to decode the stream.
 
@@ -615,7 +644,7 @@ from encoded $r$
 \]
 To retrieve encoded Haar coefficients decoder will scan 
 fractal layers top-down and for each fractal position it will decode the value $r$ with Laplace distribution determined
-by already decoded neighbours.
+by already decoded neighbors.
 Since the traversal is static for both encoder and decoder, then for each decoded $r$ value FRIF can use already decoded
 values $[A, B, C, D, E, F, G]$ as predictor neighbors.
 
@@ -657,7 +686,7 @@ Valid FRIF starts with a header for all channel made from:
     \item 4 byte integer with height of encoded image
     \item 4 bytes metadata field, divided into multiple flags representing the configuration of the codec 
 \end{itemize}
-\begin{figure} [ht]
+\begin{figure} [ht] 
     \begin{center}
         \includegraphics[width=0.95\textwidth]{figures/compression_algorithm/01_frif_image_format}
     \end{center}
@@ -665,29 +694,25 @@ Valid FRIF starts with a header for all channel made from:
 \end{figure}
 
 Metadata is used as bit storage for configuration in a sequence showed in Figure~\ref{fig:metadata}. 
-Quality field corresponds to 4 possible pairs of bits
-\begin{itemize}
-    \item 11 - Lossless compression
-    \item 10 - High quality lossy compression 
-    \item 01 - Medium quality lossy compression 
-    \item 00 - Low quality lossy compression 
-\end{itemize}
-
-Variant stores the information which complex base was used to form fractals. Current implementation only supports
-tame-twindragon option.
-\begin{itemize}
-    \item 11 - Tame-twindragon
-    \item 10 - Twindragon
-    \item 01 \& 00 - reserved
-\end{itemize}
-\newpage
-Next 4 bytes store information about colorspace of encoded image with 
+First 2 bits store information about colorspace of encoded image with 
 \begin{itemize}
     \item 00 - Grayscale8 (single channel with 8bit depth)
     \item 01 - RGB24 (three channels with 24bit depth each)
     \item 10 \& 11 - reserved
 \end{itemize}
 
+Next 2 bits are left for the variant, which stores the information which complex base was used to form fractals. Current implementation only supports
+tame-twindragon option.
+\begin{itemize}
+    \item 11 - Tame-twindragon
+    \item 10 - Twindragon
+    \item 01 \& 00 - reserved
+\end{itemize}
+
+Final metadata field is 8 bit quality parameter that contains the \texttt{quality} value described in quantization
+section. Remaining 20 bits are reserved and contain no additional metadata.
+
+After file metadata header the information about encoded channels is serialized.
 Each channel is divided into 3 sections using 2 byte marks in following order
 \begin{itemize}
     \item \textbf{PRD} 0xFF 0xBB - Learned prediction parameters
@@ -696,21 +721,22 @@ Each channel is divided into 3 sections using 2 byte marks in following order
 \end{itemize}
 Channel data is separated by \textbf{EOC} 0xFF 0xB8 (End Of Channel) mark.
 After all channels there is one last 2 byte mark \textbf{EOI} 0xFF 0xEF (End of Image)
-signaling the end of file.
+signaling the end of a file.
 \subsubsection{PRD section}
-Prediction parameters are encoded as arrays of six $4$ byte numbers for each one of 
+Prediction parameters are encoded as arrays of seven $4$ byte width floating point numbers for each one of 
 nine levels of fractal recursion. These values are signaled for both 
-value predictors $\alpha$ and width prediction $\beta$ as a $6 \cdot 4 \cdot 9 = 216$ bytes chunks.
+value predictors $\alpha$ and width prediction $\beta$ as a $7 \cdot 4 \cdot 9 = 252$ bytes chunks.
 \begin{align*}
     i&\in \{0,\,1,\,2,\,3,\,4,\,5,\,6,\,7,\,8\}\\
-    \alpha^i &= \{\alpha^i_0,\, \alpha^i_1,\, \alpha^i_2,\, \alpha^i_3,\, \alpha^i_4,\, \alpha^i_5\}\\
-    \beta^i &= \{\beta^i_0,\, \beta^i_1,\, \beta^i_2,\, \beta^i_3,\, \beta^i_4,\, \beta^i_5\}
+    \alpha^i &= \{\alpha^i_0,\, \alpha^i_1,\, \alpha^i_2,\, \alpha^i_3,\, \alpha^i_4,\, \alpha^i_5,\, \alpha^i_6\}\\
+    \beta^i &= \{\beta^i_0,\, \beta^i_1,\, \beta^i_2,\, \beta^i_3,\, \beta^i_4,\, \beta^i_5,\, \beta^i_6\}
 \end{align*}
 \subsubsection{EHD section}
 Entropy header data is stored with multiple $\textbf{EHD}$ marks for each
 context described in section 3.7 with following fields: 
 \begin{itemize}
     \item Maximum frequency bits - $4$ bytes
+    \item Laplace width of the bucket - $4$ bytes
     \item Length $k$ of the off distribution values encoded - $4$ bytes
     \item Array of $k$ values representing the symbols that Laplace distribution 
         flattened to 0 value - $k\cdot4$ bytes
@@ -720,22 +746,25 @@ context described in section 3.7 with following fields:
 The largest section of channel data is the encoded image signaled with
 \begin{itemize}
     \item Length $n$ of compressed bytestream - $8$ bytes 
-    \item Compressed bytestream - $n$ bytes 
+    \item Compressed bytestream for channel $c$ - $n_c$ bytes 
 \end{itemize}
 
 \subsubsection{Memory footprint}
 Crucial objective of designed format is the amount data that is needed to transfer along the entropy compressed bytes. 
-For image with 3 RGB channels header overhead sums to
+For image with 3 RGB channels FRIF file size sums to
 \begin{align*}
     +\, &16&=\,&4 + 4 + 4 + 4 &-\,&\text{Header} \\
-    +\, &648&=\,&3\cdot(6\cdot4)\cdot 9 &-\,&\text{Value prediction}\\ 
-    +\, &648&=\,&3\cdot(6\cdot4)\cdot 9 &-\,&\text{Width prediction}\\  
-    +\, &2160 + 1080k&=\,&3\cdot90\cdot(4 + 4 + 4k_i) &-\,&\text{Prediction context data}\\
-    +\, &24+ 3n&=\,&3\cdot(8 + n) &-\,&\text{Bytestream length and data}\\
-    =\,& 3469 + 1080k + 3n&&&
+    +\, &756&=\,&3\cdot(7\cdot4)\cdot 9 &-\,&\text{Value prediction}\\ 
+    +\, &756&=\,&3\cdot(7\cdot4)\cdot 9 &-\,&\text{Width prediction}\\  
+    +\, &3240 + 1080k&=\,&3\cdot90\cdot(3\cdot4 + 4k_i) &-\,&\text{Prediction context}\\
+    +\, &24+ n_0 + n_1 + n_2&=\,&3\cdot8 + n_0+n_1+n_2 &-\,&\text{Bytestream data}\\
+    =\,& 4776 + 1080k + n_0 + n_1 + n_2&&&
 \end{align*}
 
 A room for improvement lays in $1080k$ component, which would be unnecessary if the predicted buckets
 contained only information about symbols that are present in Laplace distribution of given width. Nonetheless
-for tested images header size did not exceed size of 10kB, which was in the limits of acceptance for the scope
-of this thesis.
+for tested images header size did not exceed 5\% of the encoded image, which was in the limits of acceptance for the scope
+of this thesis. 
+
+Decoder is implemented as a state machine parser for described data format. All values are retrieved from little-endian
+bit representation and populated in corresponding structures needed for decoding process.

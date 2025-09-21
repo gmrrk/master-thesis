@@ -1,15 +1,14 @@
 \pagenumbering{arabic}
 \begin{abstract}
 
-Image compression algorithms are ubiquitous in modern computer systems. Lossy codecs allow
-to save exabytes of memory worldwide and they do that by eliminating redundant visual data
-in images they compress. For both DCT and wavelet apporaches they divide an image into blocks 
-of fixed or variadic size and then for each block perform quantization and entropy encoding. 
-With harsher compression approaches there are visible compression defects called block artifacts.
-I will attempt to approach this common limitation with a novel FRIF compression algorithm that introduces
-more irregular boundary by replacing blocks with complex-based fractals to cover the image.
-Such covering also benefits from hexagonal nature of presented fractals, giving six immiediate neighbours for 
-statistical modeling and prediction.
+Image compression algorithms are ubiquitous in modern computer systems and
+lossy codecs save exabytes of memory across the internet by eliminating redundant visual data.
+Traditional transforms such as DCT and DWT divide images into fixed or variable-size blocks,
+applying quantization and entropy encoding to each.
+However, harsher compression often results in visible block artifacts that penalize the overall quality of compressed image.
+This thesis proposes a novel fractal-based compression algorithm FRIF that replaces rectangular blocks with complex-based fractals
+arranged in a hexagonal tiling pattern. The hexagonal structure provides six immediate neighbors, enabling enhanced multidimensional
+statistical modeling and prediction, which aims to reduce block artifacts and improve compression quality.
 
 \bigskip
 \noindent \textbf{Keywords:}

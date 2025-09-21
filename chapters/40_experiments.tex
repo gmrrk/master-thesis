@@ -4,7 +4,7 @@ In order to assess the efficacy of the codec, a series of benchmarks will be pre
 with a view to drawing comparisons with a number of popular image compression schemes. 
 It is acknowledged that FRIF is capable of operating in both lossless and lossy modes and 
 experiments are conducted separately for each mode. Performance was measured across
-kodak [citation] and CID22 [citation] datasets, which are designed to contain a variety 
+kodak \cite{kodakdataset}, J31 \cite{J31} and CID22 \cite{CID22} datasets, which are designed to contain a variety 
 of different image types.
 
 \begin{figure}[ht]
@@ -25,30 +25,30 @@ of different image types.
  
 \subsection{Lossless compression}
 
-Lossless compression mode performance is measured solely with average amount bits required to decode one pixel
+Lossless compression mode performance is measured solely with an average amount bits required to decode one pixel
 of 24 bit depth for RGB8 pictures. Measurement of FRIF was done along PNG, JPEG2000 and QOI codecs to draw the comparisons.
 \begin{figure}[ht]
     \begin{center}
         \includegraphics[width=\textwidth]{figures/experimental/bench_lossless_kodak.png}
     \end{center}
-    \caption{Bits per pixel benchmark across PNG, JPEG2000 and proposed FRIF on kodak dataset. Noticably on
-    almost all samples FRIF achieves lower bpp values than PNG. On all samples JPEG2000 achieves best 
+    \caption{Bits per pixel benchmark across PNG (orange), QOI (red), JPEG2000(green) and proposed FRIF(blue) on kodak dataset. Noticeably on
+    almost all samples FRIF achieves lower bpp values than PNG. On all samples JPEG2000 achieves the best 
     compression ratios}\label{fig:results_kodak}
 \end{figure}
 
 As shown on Figure~\ref{fig:results_kodak} with its current form and implementation lossless FRIF exceedes PNG in compression
-rates on highly detailed images available in kodak dataset. However this advantage diminishes
-on images with higher amounts of smooth areas like in CID22 or J31 dataset as shown in Table~\ref{tab:results_lossless}. 
+rates on highly detailed images available in kodak dataset. However, this advantage diminishes
+on images with higher amount of smooth areas like in CID22 or J31 dataset as shown in Table~\ref{tab:results_lossless}. 
 \begin{table}[ht]
     \begin{center}
-        \begin{tabular}[c]{|l||l|l|l|}
+        \begin{tabular}[c]{|l||l|l|l|l|}
             \hline
-            \textbf{codec} & \textbf{kodak} & \textbf{CID22} & \textbf{J31}\\
+            \textbf{codec} & \textbf{kodak} & \textbf{CID22} & \textbf{J31} & Average\\
             \hline
-            png & $13.049914$ & $10.99834$ & $12.812785$\\
-            frif & $11.59786$ & $11.559122$ & $13.246048$\\
-            jpeg2000 & $9.57616$ & $8.873637$ & $11.15974$\\            
-            qoi & $13.988512$ & $13.283921$ & $16.568345$\\
+            png & $13.049914$ & $10.99834$ & $12.812785$ & $12.287013$\\
+            frif & $11.59786$ & $11.559122$ & $13.246048$ & $12.134343$\\
+            jpeg2000 & $9.57616$ & $8.873637$ & $11.159740$ & $9.869845$\\            
+            qoi & $13.988512$ & $13.283921$ & $16.568345$ & $13.613592$\\
             \hline
         \end{tabular}
     \end{center}
@@ -58,17 +58,40 @@ on images with higher amounts of smooth areas like in CID22 or J31 dataset as sh
 \newpage
 \subsection{Lossy compression}
 
-Lossy compression mode of FRIF waw measured by calculating bit per pixel vs image distortion curve. For image quality metric SSIM2 was used and the benchmark
-was done on the same datasets as lossless compression benchmark in previous section.
+Lossy compression mode of FRIF was measured by calculating bit per pixel versus image distortion curve. For image quality metric SSIM2 was used and the benchmark
+was done on the same datasets as lossless compression benchmark in the previous section.
+\begin{figure}[ht]
+    \begin{center}
+        \includegraphics[width=\textwidth]{figures/experimental/bench_lossy_kodak.png}
+    \end{center}
+    \caption{Quality to distortion curve plot on kodak dataset across quality values from 1 to 99}\label{fig:}
+\end{figure}
+
+Lossy FRIF outputs a visually decent images with about 3-4 bits per pixel for 24 bit depth image. The results show a room for improvement for FRIF quantization for lower quality levels, as the distortion starts to build up quickly with lower bits per 
+pixel savings in comparison with JPEG. Bigger quantization steps causes FRIF to produce noticeable fractal artifacts, that are more noticable for the human
+eye and as result are heavy for SSIM2 quality metric. As seen in Figure~\ref{fig:artifacts} FRIF artifacts with irregular boundary shows a bigger amoun of distortion
+on lower quality parameter settings. JPEG produces artifacts that have irregular glow around block boundaries wherein FRIF pixelates the image damaging the overall
+quality. On the other hand for harsher artifacts on texturized layers FRIF show more distinguishable details like in (e) and (f) examples on Figure~\ref{fig:artifacts}
 
 \begin{figure}
     \begin{center}
-        \includegraphics[width=0.95\textwidth]{figures/}
+        \subfloat[$ssim2=43.90$, size = 77kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/frif_artifacts.png}}
+        \hfill
+        \subfloat[$ssim2=42.30$, size = 23kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/jpeg_artifacts.png}}
+        \vfill
+        \subfloat[$ssim2=29.08$, size = 74kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/frif_artifacts2.png}}
+        \hfill
+        \subfloat[$ssim2=31.00$, size = 20kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/jpeg_artifacts2.png}}
+        \vfill
+        \subfloat[$ssim2=46.31$, size = 79kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/frif_artifacts3.png}}
+        \hfill
+        \subfloat[$ssim2=57.15$, size = 31kb]{\includegraphics[width=0.45\textwidth]{figures/experimental/jpg_artifacts2.png}}
     \end{center}
-    \caption{}\label{fig:}
+    \caption{Comparison between FRIF and JPEG compression artifacts with similar SSIM2 metric score. Pixelated output from FRIF penalizes
+    the SSIM2 metric. }\label{fig:artifacts}
 \end{figure}
+\newpage
 
-The results show a room for improvement for FRIF, current quantization is too harsh for the quality.
 
 
 
